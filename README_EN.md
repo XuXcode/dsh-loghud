@@ -8,6 +8,10 @@ AI explanations are strictly opt-in. Detecting an error never calls a model auto
 
 The current V0.1 release focuses on the Java/Spring ecosystem. A generic fallback can retain otherwise unclassified Java exception chains, but Python, Node.js, Go, native crashes, and arbitrary text logs are not currently claimed as supported inputs.
 
+## Preview
+
+![LogHUD detecting a MyBatis error and providing an AI diagnosis in Chinese](./docs/assets/loghud-demo.png)
+
 > DeepSeek Harness is still a developer preview. This plugin pins every `@deepseek-ai/*` dependency to the same RC version and only uses public Cordis services, Tool events, Terminal, LLM Streaming, Web routes, and Client Slots.
 
 ## Features

@@ -8,6 +8,10 @@ AI 解释完全由用户手动触发。检测到错误时，插件不会自动�
 
 当前 V0.1 主要面向 Java/Spring 生态。通用回退规则能够保留尚未分类的 Java 异常链，但暂不承诺支持 Python、Node.js、Go、原生程序崩溃或任意文本日志。
 
+## 界面预览
+
+![LogHUD 检测 MyBatis 错误并提供中文 AI 诊断](./docs/assets/loghud-demo.png)
+
 > DeepSeek Harness 目前仍处于 developer preview。该插件将所有 `@deepseek-ai/*` 依赖锁定在同一 RC 版本，并且只使用公开的 Cordis 服务、Tool 事件、Terminal、LLM Streaming、Web 路由和 Client Slot。
 
 ## 功能
