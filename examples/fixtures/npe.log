@@ -1,0 +1,2 @@
+java.lang.NullPointerException: Cannot invoke "User.getName()" because "user" is null
+	at dev.loghud.UserService.load(UserService.java:27)

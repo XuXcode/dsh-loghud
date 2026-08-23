@@ -1,0 +1,10 @@
+- insert:
+    - id: loghud
+      name: 'dsh-loghud'
+      config:
+        enabled: true
+        enableAiAnalysis: true
+        maxErrorContextLines: 120
+        maxResolvedHistory: 50
+        secretRedaction: true
+        beginnerFriendly: true

@@ -1,0 +1,2 @@
+org.apache.ibatis.binding.BindingException: Invalid bound statement (not found): dev.loghud.UserMapper.findById
+	at org.apache.ibatis.binding.MapperMethod.execute(MapperMethod.java:80)

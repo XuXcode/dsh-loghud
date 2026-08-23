@@ -1,0 +1,3 @@
+org.springframework.data.redis.RedisConnectionFailureException: Unable to connect to Redis
+Caused by: io.lettuce.core.RedisConnectionException: Unable to connect to localhost:6379
+Caused by: java.net.ConnectException: Connection refused
