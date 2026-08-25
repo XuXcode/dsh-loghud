@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fixed LogHUD surfaces, text, borders, controls, and status colors to follow the live Harness light/dark theme tokens.
+- Removed emoji decoration from the LogHUD AI action labels.
+- Made the README installation section expose one direct Release tarball command for marketplace parsers.
+- Added localized DSH Market listing badges to both READMEs.
+
 ## 0.1.0 - 2026-08-20
 
 - Initial rc.8-compatible Host/Client plugin.

@@ -2,6 +2,8 @@
 
 [简体中文](./README.md) | [English](./README_EN.md)
 
+[![DSH Market](https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-en.svg)](https://dsh.market/)
+
 `dsh-loghud` is a DeepSeek Harness `0.1.0-rc.8` Web plugin for monitoring errors in local Java and Spring applications. It turns Java runtime exceptions, Spring startup and dependency-injection failures, MyBatis, database, Redis, and HTTP/MVC errors into bounded, deduplicated error cards.
 
 AI explanations are strictly opt-in. Detecting an error never calls a model automatically.
@@ -35,7 +37,15 @@ The plugin never replaces or monkey-patches the native Harness shell. The UI cle
 
 ## Installation
 
-### Build from source
+Install the current stable release directly:
+
+```sh
+dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.1.0/dsh-loghud-0.1.0.tgz
+```
+
+Run `dsh --profile web --dump-config` after installation. The dumped Web profile should contain the enabled `dsh-loghud` patch. Then start Harness normally and open a Coding Session.
+
+## Build from source
 
 Node.js 22.19 or later and pnpm are required.
 
@@ -46,16 +56,6 @@ pnpm pack
 dsh plugin --profile web add ./dsh-loghud-0.1.0.tgz
 dsh --profile web --dump-config
 ```
-
-### Install from npm
-
-After an npm release:
-
-```sh
-dsh plugin --profile web add dsh-loghud@0.1.0
-```
-
-The dumped Web profile should contain the enabled `dsh-loghud` patch. Start Harness normally and open a Coding Session.
 
 Drag the `LogHUD` badge or panel header to place it anywhere inside the viewport. The browser remembers its position. `Alt` plus the arrow keys also moves the panel, and Settings can restore the default position. UI labels and opt-in AI explanations follow the browser language. Chinese locales request Simplified Chinese diagnosis while preserving code identifiers.
 

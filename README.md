@@ -2,6 +2,8 @@
 
 [简体中文](./README.md) | [English](./README_EN.md)
 
+[![DSH Market](https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-zh.svg)](https://dsh.market/)
+
 `dsh-loghud` 是面向 DeepSeek Harness `0.1.0-rc.8` 的 Web 插件，用于监控本地 Java 和 Spring 应用错误。它会把 Java 运行时异常、Spring 启动及依赖注入错误、MyBatis、数据库、Redis 和 HTTP/MVC 错误整理成有界、去重的错误卡片。
 
 AI 解释完全由用户手动触发。检测到错误时，插件不会自动调用模型。
@@ -34,7 +36,15 @@ AI 解释完全由用户手动触发。检测到错误时，插件不会自动�
 
 ## 安装
 
-### 从源码构建
+直接安装当前正式版：
+
+```sh
+dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.1.0/dsh-loghud-0.1.0.tgz
+```
+
+安装后可通过 `dsh --profile web --dump-config` 验证，配置输出中应当包含已启用的 `dsh-loghud` patch。随后正常启动 Harness 并打开 Coding Session。
+
+## 从源码构建
 
 需要 Node.js 22.19 或更高版本以及 pnpm。
 
@@ -45,16 +55,6 @@ pnpm pack
 dsh plugin --profile web add ./dsh-loghud-0.1.0.tgz
 dsh --profile web --dump-config
 ```
-
-### 从 npm 安装
-
-发布到 npm 后可以使用：
-
-```sh
-dsh plugin --profile web add dsh-loghud@0.1.0
-```
-
-配置输出中应当包含已启用的 `dsh-loghud` patch。随后正常启动 Harness 并打开 Coding Session。
 
 `LogHUD` 徽标和面板标题均可拖动，浏览器会记住其位置。也可以使用 `Alt` 加方向键移动面板，或在设置中恢复默认位置。界面及按需 AI 解释会跟随浏览器语言；中文环境会要求模型使用简体中文，同时保留代码标识符原文。
 
