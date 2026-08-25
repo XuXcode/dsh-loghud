@@ -21,17 +21,18 @@ export class DiagnosisService {
 export function buildPrompt(event: ErrorEvent, redact: boolean, locale: DiagnosisLocale = 'en'): string {
   const context = redact ? redactLines(event.rawContext) : event.rawContext
   const data = {
-    category: event.category, exceptionType: event.exceptionType,
+    category: event.category, language: event.language, runtime: event.runtime, toolchain: event.toolchain,
+    parserId: event.parserId, errorCode: event.errorCode, exceptionType: event.exceptionType,
     summary: redact ? redactSecrets(event.summary) : event.summary,
     rootMessage: event.rootMessage ? (redact ? redactSecrets(event.rootMessage) : event.rootMessage) : undefined,
-    target: event.target, file: event.file, line: event.line, symbol: event.symbol,
+    target: event.target, file: event.file, line: event.line, column: event.column, symbol: event.symbol,
     exceptionChain: event.exceptionChain, commandFamily: event.commandFamily,
     context: context.slice(-80),
   }
   const language = locale === 'zh-CN'
     ? 'All human-readable string values MUST use clear Simplified Chinese. Keep Java class names, method names, file paths, configuration keys, and code identifiers unchanged when needed. Do not include English translations.'
     : 'Write all human-readable string values in clear English.'
-  return `You explain a local Spring/Java runtime error to a developer. Be concise, beginner-friendly, and truthful. Do not repeat the stack trace. ${language} Return ONLY JSON with keys simpleExplanation (string), likelyCauses (string[]), suggestedChecks (string[]), confidence (high|medium|low).\n\nError:\n${JSON.stringify(data, null, 2)}`
+  return `You explain a local development runtime or build error to a developer. Be concise, beginner-friendly, and truthful. Do not repeat the stack trace. ${language} Return ONLY JSON with keys simpleExplanation (string), likelyCauses (string[]), suggestedChecks (string[]), confidence (high|medium|low).\n\nError:\n${JSON.stringify(data, null, 2)}`
 }
 
 function parseModelOutput(text: string): Diagnosis {

@@ -13,8 +13,8 @@ const JOB_OUTPUT_TOOL = /(?:^|[/_-])job[/_-]?output$/i
 const BACKGROUND_JOB_STARTED = /started background job\s+([^\s]+)/i
 const SETTLED_JOB = /\[status:\s*(?:completed|failed|killed|cancelled),\s*exit code:\s*-?\d+\]/i
 const EXIT_CODE = /\bexit code:\s*(-?\d+)\b/i
-const JAVA_COMMAND = /(?:^|[\s"'])(?:java|java\.exe|mvn|mvnw|gradle|gradlew)(?:\.cmd|\.bat|\.exe)?(?:[\s"']|$)|spring-boot/i
-const JAVA_OUTPUT = /(?:Spring Boot|Application run failed|Error starting ApplicationContext|(?:Caused by:\s*)?(?:[\w$]+\.)+(?:Exception|Error)(?::|\s))/i
+const SUPPORTED_COMMAND = /(?:^|[\s"'])(?:java|mvn|mvnw|gradle|gradlew|node|npm|pnpm|yarn|npx|tsx|ts-node|tsc|vite|webpack|next|vitest|jest)(?:\.cmd|\.bat|\.exe)?(?:[\s"']|$)|spring-boot/i
+const SUPPORTED_OUTPUT = /(?:Spring Boot|Application run failed|Error starting ApplicationContext|(?:Caused by:\s*)?(?:[\w$]+\.)+(?:Exception|Error)(?::|\s)|\b(?:TypeError|ReferenceError|SyntaxError|RangeError|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|EADDRINUSE|ECONNREFUSED|TS\d{4}|ELIFECYCLE)\b)/i
 const API_PREFIX = '/api/loghud'
 
 export class LogHudRuntime {
@@ -46,7 +46,7 @@ export class LogHudRuntime {
     const output = extractText(result.content)
     if (shell) {
       const started = output.match(BACKGROUND_JOB_STARTED)?.[1]
-      if (started && command && isJavaCandidate(command, output)) {
+      if (started && command && isSupportedCandidate(command, output)) {
         this.rememberBackgroundJob(started, sessionId, command)
         this.agents.set(sessionId, exec.agent)
         return
@@ -59,7 +59,7 @@ export class LogHudRuntime {
       if (!SETTLED_JOB.test(output)) return
       if (jobId) this.backgroundJobs.delete(backgroundJobKey(sessionId, jobId))
     }
-    if ((!command && !output) || !isJavaCandidate(command, output)) return
+    if ((!command && !output) || !isSupportedCandidate(command, output)) return
     this.agents.set(sessionId, exec.agent)
     this.processor.finish(sessionId, output, {
       ...(command ? { command } : {}),
@@ -76,7 +76,7 @@ export class LogHudRuntime {
   private createStreamingTool() {
     return defineTool({
       name: 'loghud_run',
-      description: 'Run a local command in an official Harness terminal while dsh-loghud incrementally monitors Spring/Java errors.',
+      description: 'Run a local command in an official Harness terminal while LogHUD incrementally monitors Java, Spring, Node.js, and TypeScript errors.',
       parameters: {
         command: { type: 'string', required: true, description: 'Command to run' },
         timeoutMs: { type: 'integer', description: 'Cooperative timeout in milliseconds (1000-600000)' },
@@ -150,6 +150,14 @@ export class LogHudRuntime {
         const fingerprint = requiredString(body.fingerprint, 'fingerprint')
         return json(res, this.store.resolve(sessionId, fingerprint) ? 200 : 404, this.store.snapshot(sessionId))
       }
+      if (action === 'ignore') {
+        const fingerprint = requiredString(body.fingerprint, 'fingerprint')
+        return json(res, this.store.ignore(sessionId, fingerprint) ? 200 : 404, this.store.snapshot(sessionId))
+      }
+      if (action === 'unignore') {
+        const fingerprint = requiredString(body.fingerprint, 'fingerprint')
+        return json(res, this.store.unignore(sessionId, fingerprint) ? 200 : 404, this.store.snapshot(sessionId))
+      }
       if (action === 'clear-resolved') { this.store.clearResolved(sessionId); return json(res, 200, this.store.snapshot(sessionId)) }
       if (action === 'clear') { this.store.clearAll(sessionId); return json(res, 200, this.store.snapshot(sessionId)) }
       if (action === 'diagnose') return await this.diagnose(sessionId, body, res)
@@ -161,11 +169,11 @@ export class LogHudRuntime {
 
   private openSse(sessionId: string, req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse): void {
     res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive' })
-    let pending: unknown
+    let pending: import('../shared/types.js').SessionSnapshot | undefined
     let flush: ReturnType<typeof setTimeout> | undefined
-    const send = (data: unknown) => {
+    const send = (data: import('../shared/types.js').SessionSnapshot) => {
       pending = data
-      if (!flush) flush = setTimeout(() => { res.write(`event: snapshot\ndata: ${JSON.stringify(pending)}\n\n`); flush = undefined }, 25)
+      if (!flush) flush = setTimeout(() => { if (pending) res.write(`id: ${pending.revision}\nevent: snapshot\ndata: ${JSON.stringify(pending)}\n\n`); flush = undefined }, 25)
     }
     const dispose = this.store.subscribe(sessionId, send)
     const heartbeat = setInterval(() => res.write(`event: heartbeat\ndata: ${Date.now()}\n\n`), 15_000)
@@ -229,8 +237,8 @@ function extractJobId(value: unknown): string | undefined {
   return undefined
 }
 
-function isJavaCandidate(command: string | undefined, output: string): boolean {
-  return Boolean(command && JAVA_COMMAND.test(command)) || JAVA_OUTPUT.test(output)
+function isSupportedCandidate(command: string | undefined, output: string): boolean {
+  return Boolean(command && SUPPORTED_COMMAND.test(command)) || SUPPORTED_OUTPUT.test(output)
 }
 
 function extractExitCode(output: string): number | undefined {

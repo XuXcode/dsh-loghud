@@ -1,6 +1,12 @@
 import type { ErrorDetectionRule } from '../shared/types.js'
 
 export const DEFAULT_RULES: readonly ErrorDetectionRule[] = [
+  rule('typescript', 'TYPESCRIPT_COMPILE', { language: 'typescript', toolchain: 'typescript' }, /\berror\s+TS\d+\s*:/i),
+  rule('node-module', 'MODULE_RESOLUTION', { language: 'javascript', toolchain: 'node' }, /MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|Cannot find (?:module|package)/i),
+  rule('node-startup', 'APPLICATION_STARTUP', { language: 'javascript', toolchain: 'node' }, /EADDRINUSE|address already in use/i),
+  rule('node-network', 'NODE_RUNTIME', { language: 'javascript', toolchain: 'node' }, /ECONNREFUSED|ECONNRESET|ETIMEDOUT/i),
+  rule('node-runtime', 'NODE_RUNTIME', { language: 'javascript', toolchain: 'node' }, /(?:Type|Reference|Syntax|Range|URI|Eval|Aggregate)Error\s*:|UnhandledPromiseRejection/i),
+  rule('node-build', 'BUILD_FAILURE', { language: 'typescript', toolchain: 'node' }, /(?:vite|rollup|webpack|next).*(?:error|failed)|Module build failed|Failed to compile|ELIFECYCLE|ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL/i),
   rule('spring-ioc', 'SPRING_IOC', /(?:BeanCreation|UnsatisfiedDependency|NoSuchBeanDefinition|ApplicationContext)Exception/),
   rule('mybatis', 'MYBATIS', /(?:Binding|Reflection|Persistence)Exception|Invalid bound statement/),
   rule('database', 'DATABASE', /SQLSyntaxErrorException|CommunicationsException|DuplicateKeyException|DataIntegrityViolationException/),
@@ -12,11 +18,14 @@ export const DEFAULT_RULES: readonly ErrorDetectionRule[] = [
   rule('process-failure', 'UNKNOWN', /Process exited with code [1-9]\d*|Connection refused/),
 ]
 
-function rule(id: string, category: ErrorDetectionRule['category'], ...patterns: RegExp[]): ErrorDetectionRule {
-  return { id, ...(category === 'UNKNOWN' ? {} : { framework: 'spring' }), category, severity: 'error', startPatterns: patterns }
+function rule(id: string, category: ErrorDetectionRule['category'], ...input: Array<RegExp | Pick<ErrorDetectionRule, 'language' | 'toolchain'>>): ErrorDetectionRule {
+  const metadata = input.find((value): value is Pick<ErrorDetectionRule, 'language' | 'toolchain'> => !(value instanceof RegExp))
+  const patterns = input.filter((value): value is RegExp => value instanceof RegExp)
+  const javaFamily = !metadata && category !== 'UNKNOWN'
+  return { id, ...(javaFamily ? { framework: 'spring', language: 'java' as const } : {}), ...metadata, category, severity: 'error', startPatterns: patterns }
 }
 
-const cheapNeedles = ['exception', 'error', 'failed', 'failure', 'caused by', 'connection refused', 'invalid bound', 'already in use', 'exited with code']
+const cheapNeedles = ['exception', 'error', 'failed', 'failure', 'caused by', 'connection refused', 'invalid bound', 'already in use', 'exited with code', 'cannot find module', 'cannot find package', 'eaddrinuse', 'econnrefused', 'elifecycle', 'err_pnpm']
 
 export function mightContainError(line: string): boolean {
   const lower = line.toLowerCase()

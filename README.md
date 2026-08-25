@@ -8,11 +8,11 @@
   <a href="https://dsh.market/"><img src="https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-zh.svg" alt="DSH Market 已收录"></a>
 </p>
 
-`dsh-loghud` 是面向 DeepSeek Harness `0.1.0-rc.8` 的 Web 插件，用于监控本地 Java 和 Spring 应用错误。它会把 Java 运行时异常、Spring 启动及依赖注入错误、MyBatis、数据库、Redis 和 HTTP/MVC 错误整理成有界、去重的错误卡片。
+`dsh-loghud` 是面向 DeepSeek Harness `0.1.0-rc.8` 的可扩展本地开发错误监控 Web 插件。v0.2.0 正式支持 Node.js、TypeScript、Java 与 Spring，将运行时、编译、模块解析、构建和应用启动错误整理成有界、去重的错误卡片。
 
 AI 解释完全由用户手动触发。检测到错误时，插件不会自动调用模型。
 
-当前 V0.1 主要面向 Java/Spring 生态。通用回退规则能够保留尚未分类的 Java 异常链，但暂不承诺支持 Python、Node.js、Go、原生程序崩溃或任意文本日志。
+当前 v0.2.0 支持 Node.js/TypeScript 与 Java/Spring。Python 计划在 v0.3.0 加入，Go 及其他生态将在后续版本扩展；当前不承诺生产日志、原生程序崩溃或任意文本日志监控。
 
 ## 界面预览
 
@@ -22,12 +22,14 @@ AI 解释完全由用户手动触发。检测到错误时，插件不会自动�
 
 ## 功能
 
-- 识别 Spring IOC、MyBatis、MySQL/数据库、Redis、Spring MVC、Java 运行时和应用启动错误。
-- 提取根异常、核心消息、文件、行号、方法、目标对象和端口等信息。
+- 识别 Node.js 运行时、TypeScript `TSxxxx`、模块缺失、网络连接、npm/pnpm/yarn 生命周期以及 Vite、Rollup、Webpack、Next.js 构建错误。
+- 保留 Spring IOC、MyBatis、MySQL/数据库、Redis、Spring MVC、Java 运行时和应用启动错误识别。
+- 提取根异常、错误代码、语言、工具链、文件、行列号、业务栈帧、目标对象和端口。
 - 使用稳定指纹合并重复错误，并记录出现次数和最近发生时间。
-- 按 Session 隔离活动错误、已解决历史和项目健康状态。
-- 通过 SSE 向浏览器推送合并后的状态更新。
-- 支持中英文界面、明暗主题、键盘操作和可拖动悬浮面板。
+- 按 Session 隔离活动、已解决、已忽略错误；被忽略错误不计入 `BROKEN`。
+- 通过带 revision 的 SSE 推送状态，并在 HUD 中显示连接、重连和离线状态。
+- 支持搜索、语言/分类筛选、JSON/Markdown 导出、可拖动和可调整尺寸的悬浮面板。
+- 支持中英文界面、Harness 明暗主题变量、键盘操作及布局持久化。
 - AI 诊断按需调用，并在发送前遮盖常见密钥和凭据。
 
 ## 日志采集模式
@@ -43,7 +45,7 @@ AI 解释完全由用户手动触发。检测到错误时，插件不会自动�
 直接安装当前正式版：
 
 ```sh
-dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.1.0/dsh-loghud-0.1.0.tgz
+dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.2.0/dsh-loghud-0.2.0.tgz
 ```
 
 安装后可通过 `dsh --profile web --dump-config` 验证，配置输出中应当包含已启用的 `dsh-loghud` patch。随后正常启动 Harness 并打开 Coding Session。
@@ -56,11 +58,23 @@ dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/down
 pnpm install
 pnpm check
 pnpm pack
-dsh plugin --profile web add ./dsh-loghud-0.1.0.tgz
+dsh plugin --profile web add ./dsh-loghud-0.2.0.tgz
 dsh --profile web --dump-config
 ```
 
-`LogHUD` 徽标和面板标题均可拖动，浏览器会记住其位置。也可以使用 `Alt` 加方向键移动面板，或在设置中恢复默认位置。界面及按需 AI 解释会跟随浏览器语言；中文环境会要求模型使用简体中文，同时保留代码标识符原文。
+`LogHUD` 徽标和面板标题均可拖动，面板右下角可调整尺寸，浏览器会记住位置和尺寸。也可以使用 `Alt` 加方向键移动面板，或在设置中恢复默认布局。界面及按需 AI 解释会跟随浏览器语言；中文环境会要求模型使用简体中文，同时保留代码标识符原文。
+
+## 支持矩阵
+
+| 生态 | v0.2.0 状态 | 典型错误 |
+| --- | --- | --- |
+| Node.js / JavaScript | 正式支持 | TypeError、模块缺失、EADDRINUSE、ECONNREFUSED |
+| TypeScript | 正式支持 | TSxxxx、Vite/Rollup/Webpack/Next.js 构建失败 |
+| Java / Spring | 保持支持 | IOC、MyBatis、数据库、Redis、MVC、运行时与启动错误 |
+| Python | 计划 v0.3.0 | 尚未实现 |
+| Go | 后续版本 | 尚未实现 |
+
+Node.js 无依赖演示位于 [`examples/node-demo`](examples/node-demo/README.md)。
 
 ## 配置
 
@@ -69,6 +83,7 @@ enabled: true
 enableAiAnalysis: true       # 仅允许手动触发，不会自动调用
 maxErrorContextLines: 120
 maxResolvedHistory: 50
+maxIgnoredHistory: 50
 secretRedaction: true
 beginnerFriendly: true
 ```
@@ -77,7 +92,7 @@ beginnerFriendly: true
 
 ## 错误识别与健康状态
 
-解析器链覆盖 Spring IOC、MyBatis、MySQL/数据库、Redis、Spring MVC、Java 运行时异常、应用启动失败和通用 Java 异常回退。它会将包装异常链归并到有效根因，对动态噪声进行规范化，生成稳定的 SHA-256 指纹，并累计重复出现次数。
+解析器链固定按 TypeScript、Node.js、Spring/Java、Generic 的优先级运行。它会选择第一个非 `node_modules`、非 `node:internal` 的业务栈帧，将包装异常链归并到有效根因，并在规范化路径、构建哈希、PID、端口和临时目录后生成稳定 SHA-256 指纹。
 
 健康状态定义如下：
 
@@ -101,6 +116,8 @@ AI 诊断按钮点击前不会调用模型。一次用户操作最多发起一�
 - `GET /api/loghud/:sessionId/events` (SSE)
 - `POST /api/loghud/:sessionId/diagnose`
 - `POST /api/loghud/:sessionId/resolve`
+- `POST /api/loghud/:sessionId/ignore`
+- `POST /api/loghud/:sessionId/unignore`
 - `POST /api/loghud/:sessionId/clear-resolved`
 - `POST /api/loghud/:sessionId/clear`
 

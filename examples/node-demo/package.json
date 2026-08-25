@@ -1,0 +1,10 @@
+{
+  "name": "dsh-loghud-node-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-error": "node type-error.mjs",
+    "module-missing": "node module-missing.mjs",
+    "port-in-use": "node port-in-use.mjs"
+  }
+}

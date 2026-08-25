@@ -1,0 +1,30 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify tag and package versions
+        shell: bash
+        run: |
+          test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./package.json').version")"
+          test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./dsh.plugin.json').version")"
+      - run: pnpm check
+      - run: pnpm pack
+      - name: Create stable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "dsh-loghud-${GITHUB_REF_NAME#v}.tgz" --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md --latest

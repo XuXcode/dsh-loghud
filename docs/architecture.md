@@ -1,5 +1,11 @@
 # Architecture
 
+## v0.2 parser and state model
+
+`LogProcessor` feeds bounded blocks into registered `LogErrorParser` implementations. Built-in priority is TypeScript, Node.js, Spring/Java, then Generic. Parsers publish JSON-safe language, runtime, toolchain, parser ID, error code, file, line, and column metadata. Fingerprints include the first business frame and command family after paths, build hashes, PIDs, ports, and Node internal frames are normalized.
+
+Snapshot schema version 2 contains bounded active, resolved, and ignored lists. Legacy v0.1 records receive defaults during validation. SSE snapshots carry the Store revision as the event ID, and every connection or reconnection receives a complete current snapshot. JSON and Markdown exports are generated in the browser.
+
 ```mermaid
 flowchart LR
   A["Ordinary shell tool"] -->|"tools/result, final"| P["Sanitize + prefilter"]

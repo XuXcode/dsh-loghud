@@ -1,5 +1,7 @@
 # Verification record
 
+v0.2.0 acceptance adds strict typecheck, more than 20 Node.js/TypeScript parser cases including Windows and Unix frames, ignored-state migration tests, client filtering/export/reconnect checks, package verification, and Windows/Ubuntu CI. Existing Java/Spring, fingerprint, recovery, redaction, AI opt-in, and 100,000-line performance checks remain required.
+
 Verified on Windows 11 on 2026-08-20:
 
 - Node.js 24.12.0 and pnpm 11.19.0.

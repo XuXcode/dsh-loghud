@@ -1,5 +1,11 @@
 # Technical feasibility
 
+## v0.2 update
+
+The public Tool result and Terminal surfaces are language-agnostic, so Node.js and TypeScript support is implemented entirely in the plugin parser chain. No Harness core changes or shell monkey-patching are required. Ordinary shell results still arrive only after completion; `loghud_run` remains the sole incremental-output mode.
+
+The existing HTTP prefix supports ignore/unignore and revisioned SSE without a Host download endpoint. JSON and Markdown exports use the bounded browser snapshot. Optional Storage and LLM services retain their v0.1 degradation behavior.
+
 Target: DeepSeek Harness `0.1.0-rc.8`.
 
 Harness describes a plugin-first Cordis architecture and explicitly marks the project as developer preview. The implementation stays on its public extension surfaces: Cordis plugins/services, Tool lifecycle events, Terminal sessions, LLM streaming, Web route registration, and Web Client Slots. It does not modify Harness core or patch DOM/shell behavior. See the official [architecture](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md) and [LLM streaming API](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/llm-streaming.md).

@@ -47,6 +47,8 @@ export class ErrorBlockCollector {
 
     const isContinuation = /^\s+(?:at\s|\.\.\.\s+\d+\s+more|Caused by:|Suppressed:)/.test(line)
       || /^Caused by:|^Suppressed:|^APPLICATION FAILED TO START|^Description:|^Action:/.test(line)
+      || /^\s*(?:code|errno|syscall|address|port):\s*/i.test(line)
+      || /^\s*(?:\d+\s*\||[~^]+|at\s+file:\/\/)/.test(line)
       || line.trim() === ''
       || /^[-=*]{3,}$/.test(line.trim())
 

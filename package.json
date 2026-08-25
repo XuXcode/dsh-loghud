@@ -1,7 +1,7 @@
 {
   "name": "dsh-loghud",
-  "version": "0.1.0",
-  "description": "Local Java and Spring error HUD with opt-in AI diagnosis for DeepSeek Harness",
+  "version": "0.2.0",
+  "description": "Extensible local development error HUD with Node.js, TypeScript, Java, Spring, and opt-in AI diagnosis for DeepSeek Harness",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -33,7 +33,7 @@
       "platform": "web"
     }
   },
-  "files": ["lib", "src", "cordis.patch.yml", "dsh.plugin.json", "README.md", "README_EN.md", "LICENSE", "CHANGELOG.md", "SECURITY.md", "docs", "examples/fixtures", "examples/spring-demo/pom.xml", "examples/spring-demo/README.md", "examples/spring-demo/src"],
+  "files": ["lib", "src", "cordis.patch.yml", "dsh.plugin.json", "README.md", "README_EN.md", "LICENSE", "CHANGELOG.md", "SECURITY.md", "docs", "examples/fixtures", "examples/spring-demo/pom.xml", "examples/spring-demo/README.md", "examples/spring-demo/src", "examples/node-demo"],
   "scripts": {
     "build": "tsdown && node scripts/verify-client-bundle.mjs",
     "typecheck": "tsc --noEmit",

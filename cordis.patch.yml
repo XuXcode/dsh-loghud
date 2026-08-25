@@ -6,5 +6,6 @@
         enableAiAnalysis: true
         maxErrorContextLines: 120
         maxResolvedHistory: 50
+        maxIgnoredHistory: 50
         secretRedaction: true
         beginnerFriendly: true

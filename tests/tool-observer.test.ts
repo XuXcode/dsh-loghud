@@ -39,4 +39,11 @@ describe('Harness tool-result observation', () => {
     observer(runtime)(execution('pwsh', { command: 'Test-Path .\\pom.xml' }), result('True'))
     expect(runtime.store.snapshot('session-1').health).toBe('UNKNOWN')
   })
+
+  it('observes Node and TypeScript command families on Windows and Unix shells', () => {
+    const runtime = new LogHudRuntime({} as never); const observe = observer(runtime)
+    observe(execution('pwsh', { command: 'pnpm.cmd exec tsc' }), result("src/app.ts(2,4): error TS2322: Type 'string' is not assignable to type 'number'.", true))
+    observe(execution('bash', { command: 'node ./src/app.js' }), result('TypeError: user is null\n    at main (/repo/src/app.js:3:2)', true))
+    expect(runtime.store.snapshot('session-1').active.map((event) => event.category)).toEqual(expect.arrayContaining(['TYPESCRIPT_COMPILE', 'NODE_RUNTIME']))
+  })
 })

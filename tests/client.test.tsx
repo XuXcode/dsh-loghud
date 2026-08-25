@@ -14,11 +14,13 @@ const error: ErrorEvent = {
   exceptionType: 'NullPointerException', summary: 'user is null', file: 'UserService.java', line: 27, captureMode: 'tool-result',
   firstSeenAt: 1, lastSeenAt: 1, occurrences: 2, exceptionChain: ['NullPointerException'], rawContext: ['java.lang.NullPointerException: user is null'],
 }
-const snapshot: SessionSnapshot = { sessionId: 's1', health: 'BROKEN', observedCommand: true, active: [error], resolved: [], revision: 1 }
+const snapshot: SessionSnapshot = { schemaVersion: 2, sessionId: 's1', health: 'BROKEN', observedCommand: true, active: [error], resolved: [], ignored: [], revision: 1 }
 const list = { current: 's1' } as SessionListState
 const useSessions = ((selector: (value: SessionListState) => unknown) => selector(list)) as SnapshotSelectorHook<SessionListState>
 
 class FakeEventSource {
+  onopen: (() => void) | null = null
+  onerror: (() => void) | null = null
   addEventListener(): void {}
   close(): void {}
 }

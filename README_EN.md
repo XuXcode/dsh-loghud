@@ -8,11 +8,11 @@
   <a href="https://dsh.market/"><img src="https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-en.svg" alt="Listed on DSH Market"></a>
 </p>
 
-`dsh-loghud` is a DeepSeek Harness `0.1.0-rc.8` Web plugin for monitoring errors in local Java and Spring applications. It turns Java runtime exceptions, Spring startup and dependency-injection failures, MyBatis, database, Redis, and HTTP/MVC errors into bounded, deduplicated error cards.
+`dsh-loghud` is an extensible local development error-monitoring Web plugin for DeepSeek Harness `0.1.0-rc.8`. v0.2.0 supports Node.js, TypeScript, Java, and Spring, turning runtime, compile, module-resolution, build, and startup failures into bounded, deduplicated error cards.
 
 AI explanations are strictly opt-in. Detecting an error never calls a model automatically.
 
-The current V0.1 release focuses on the Java/Spring ecosystem. A generic fallback can retain otherwise unclassified Java exception chains, but Python, Node.js, Go, native crashes, and arbitrary text logs are not currently claimed as supported inputs.
+v0.2.0 supports Node.js/TypeScript and Java/Spring. Python is planned for v0.3.0, with Go and other ecosystems later. Production monitoring, native crashes, and arbitrary text-log monitoring remain out of scope.
 
 ## Preview
 
@@ -22,13 +22,15 @@ The current V0.1 release focuses on the Java/Spring ecosystem. A generic fallbac
 
 ## Features
 
-- Detects Spring IOC, MyBatis, MySQL/database, Redis, Spring MVC, Java runtime, and application startup errors.
-- Extracts the root exception, core message, file, line, symbol, target, and port when available.
+- Detects Node.js runtime errors, TypeScript `TSxxxx` diagnostics, missing modules, network failures, package-manager lifecycle failures, and Vite/Rollup/Webpack/Next.js build errors.
+- Preserves Spring IOC, MyBatis, MySQL/database, Redis, Spring MVC, Java runtime, and startup detection.
+- Extracts language, toolchain, error code, root cause, business frame, file, line, column, target, and port.
 - Merges repeated errors using stable fingerprints and tracks occurrence count and last-seen time.
-- Isolates active errors, resolved history, and project health by Session.
+- Isolates active, resolved, and ignored errors by Session; ignored errors do not make health `BROKEN`.
 - Supports manual resolution, clearing resolved history, and clearing the current Session.
-- Pushes coalesced browser updates through SSE.
-- Supports Chinese and English UI, light and dark themes, keyboard operation, and a draggable floating panel.
+- Pushes revisioned snapshots through SSE and exposes connection/reconnection state.
+- Adds search, language/category filters, JSON/Markdown export, and a draggable/resizable persisted layout.
+- Supports Chinese and English UI, Harness light/dark theme variables, and keyboard operation.
 - Runs AI diagnosis only on request and redacts common secrets before sending context.
 
 ## Capture modes
@@ -44,7 +46,7 @@ The plugin never replaces or monkey-patches the native Harness shell. The UI cle
 Install the current stable release directly:
 
 ```sh
-dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.1.0/dsh-loghud-0.1.0.tgz
+dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.2.0/dsh-loghud-0.2.0.tgz
 ```
 
 Run `dsh --profile web --dump-config` after installation. The dumped Web profile should contain the enabled `dsh-loghud` patch. Then start Harness normally and open a Coding Session.
@@ -57,11 +59,23 @@ Node.js 22.19 or later and pnpm are required.
 pnpm install
 pnpm check
 pnpm pack
-dsh plugin --profile web add ./dsh-loghud-0.1.0.tgz
+dsh plugin --profile web add ./dsh-loghud-0.2.0.tgz
 dsh --profile web --dump-config
 ```
 
-Drag the `LogHUD` badge or panel header to place it anywhere inside the viewport. The browser remembers its position. `Alt` plus the arrow keys also moves the panel, and Settings can restore the default position. UI labels and opt-in AI explanations follow the browser language. Chinese locales request Simplified Chinese diagnosis while preserving code identifiers.
+Drag the `LogHUD` badge or panel header and resize the panel from its bottom-right corner. The browser remembers both position and size. `Alt` plus arrow keys also moves the panel, and Settings restores the default layout. UI labels and opt-in AI explanations follow the browser language.
+
+## Support matrix
+
+| Ecosystem | v0.2.0 | Typical errors |
+| --- | --- | --- |
+| Node.js / JavaScript | Supported | TypeError, missing modules, EADDRINUSE, ECONNREFUSED |
+| TypeScript | Supported | TSxxxx and Vite/Rollup/Webpack/Next.js build failures |
+| Java / Spring | Supported | IOC, MyBatis, database, Redis, MVC, runtime, startup |
+| Python | Planned for v0.3.0 | Not implemented |
+| Go | Later release | Not implemented |
+
+The dependency-free Node demo is in [`examples/node-demo`](examples/node-demo/README.md).
 
 ## Configuration
 
@@ -70,6 +84,7 @@ enabled: true
 enableAiAnalysis: true       # manual only; never automatic
 maxErrorContextLines: 120
 maxResolvedHistory: 50
+maxIgnoredHistory: 50
 secretRedaction: true
 beginnerFriendly: true
 ```
@@ -78,7 +93,7 @@ Missing Terminal support disables only `loghud_run`; final tool-result detection
 
 ## Detection and health state
 
-The parser chain covers Spring IOC, MyBatis, MySQL/database, Redis, Spring MVC, Java runtime exceptions, application startup failures, and a generic Java fallback. It collapses wrapper chains to a useful root cause, normalizes dynamic noise, creates a stable SHA-256 fingerprint, and increments the occurrence count for repeats.
+The parser chain runs TypeScript, Node.js, Spring/Java, and Generic parsers in a fixed priority order. It selects the first non-`node_modules`, non-`node:internal` business frame and normalizes paths, build hashes, PIDs, ports, and temporary directories before creating a stable SHA-256 fingerprint.
 
 Health states are defined as follows:
 
@@ -102,6 +117,8 @@ All Session IDs and error fingerprints are validated at the route boundary.
 - `GET /api/loghud/:sessionId/events`
 - `POST /api/loghud/:sessionId/diagnose`
 - `POST /api/loghud/:sessionId/resolve`
+- `POST /api/loghud/:sessionId/ignore`
+- `POST /api/loghud/:sessionId/unignore`
 - `POST /api/loghud/:sessionId/clear-resolved`
 - `POST /api/loghud/:sessionId/clear`
 

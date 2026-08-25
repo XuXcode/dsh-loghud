@@ -13,7 +13,7 @@ export class LogProcessor {
     let collector = this.collectors.get(key)
     if (!collector) { collector = new ErrorBlockCollector({ maxLines: this.store.settings.maxErrorContextLines }); this.collectors.set(key, collector) }
     const family = commandFamily(input.command)
-    return collector.push(chunk).map((block) => this.store.observe(sessionId, parseErrorBlock(block), {
+    return collector.push(chunk).map((block) => this.store.observe(sessionId, parseErrorBlock(block, { ...input, ...(family ? { commandFamily: family } : {}) }), {
       ...input,
       ...(family ? { commandFamily: family } : {}),
     }))
@@ -24,7 +24,7 @@ export class LogProcessor {
     const collector = this.collectors.get(key) ?? new ErrorBlockCollector({ maxLines: this.store.settings.maxErrorContextLines })
     this.collectors.delete(key)
     const family = commandFamily(input.command)
-    const events = [...collector.push(finalChunk), ...collector.finish()].map((block) => this.store.observe(sessionId, parseErrorBlock(block), {
+    const events = [...collector.push(finalChunk), ...collector.finish()].map((block) => this.store.observe(sessionId, parseErrorBlock(block, { ...input, ...(family ? { commandFamily: family } : {}) }), {
       ...(input.command ? { command: input.command } : {}),
       ...(family ? { commandFamily: family } : {}),
       captureMode: input.captureMode,

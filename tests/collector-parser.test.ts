@@ -5,7 +5,7 @@ import { fixtures } from './fixtures.js'
 function parse(text: string, chunks = [text]) {
   const collector = new ErrorBlockCollector()
   const blocks = chunks.flatMap((chunk) => collector.push(chunk)).concat(collector.finish())
-  return blocks.map(parseErrorBlock)
+  return blocks.map((block) => parseErrorBlock(block))
 }
 
 describe('collector and parser', () => {

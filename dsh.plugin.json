@@ -1,8 +1,8 @@
 {
   "id": "dsh-loghud",
   "name": "LogHUD",
-  "version": "0.1.0",
-  "description": "Local Java and Spring error monitoring with opt-in AI explanations",
+  "version": "0.2.0",
+  "description": "Extensible local development error monitoring with Node.js, TypeScript, Java, Spring, and opt-in AI explanations",
   "permissions": ["process:execute", "network:loopback"],
   "platforms": ["web"]
 }

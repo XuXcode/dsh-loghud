@@ -1,4 +1,4 @@
-import type { Diagnosis, DiagnosisLocale, SessionSnapshot } from '../shared/types.js'
+import type { ConnectionState, Diagnosis, DiagnosisLocale, SessionSnapshot } from '../shared/types.js'
 
 const root = '/api/loghud'
 
@@ -6,14 +6,27 @@ export async function getSnapshot(sessionId: string): Promise<SessionSnapshot> {
   return request(`${root}/${encodeURIComponent(sessionId)}/snapshot`)
 }
 
-export function subscribe(sessionId: string, update: (snapshot: SessionSnapshot) => void): () => void {
+export function subscribe(sessionId: string, update: (snapshot: SessionSnapshot) => void, connection?: (state: ConnectionState) => void): () => void {
+  connection?.('connecting')
   const source = new EventSource(`${root}/${encodeURIComponent(sessionId)}/events`)
+  let opened = false
+  source.onopen = () => { opened = true; connection?.('connected') }
+  source.onerror = () => connection?.(opened ? 'reconnecting' : 'offline')
+  source.addEventListener('heartbeat', () => connection?.('connected'))
   source.addEventListener('snapshot', (event) => update(JSON.parse((event as MessageEvent<string>).data) as SessionSnapshot))
-  return () => source.close()
+  return () => { source.close(); connection?.('offline') }
 }
 
 export function resolveError(sessionId: string, fingerprint: string): Promise<SessionSnapshot> {
   return request(`${root}/${encodeURIComponent(sessionId)}/resolve`, { method: 'POST', body: JSON.stringify({ fingerprint }) })
+}
+
+export function ignoreError(sessionId: string, fingerprint: string): Promise<SessionSnapshot> {
+  return request(`${root}/${encodeURIComponent(sessionId)}/ignore`, { method: 'POST', body: JSON.stringify({ fingerprint }) })
+}
+
+export function unignoreError(sessionId: string, fingerprint: string): Promise<SessionSnapshot> {
+  return request(`${root}/${encodeURIComponent(sessionId)}/unignore`, { method: 'POST', body: JSON.stringify({ fingerprint }) })
 }
 
 export function clearResolved(sessionId: string): Promise<SessionSnapshot> {

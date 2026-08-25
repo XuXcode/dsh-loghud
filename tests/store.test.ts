@@ -30,6 +30,30 @@ describe('session store', () => {
     store.clearAll('a'); expect(store.snapshot('a').health).toBe('UNKNOWN')
   })
 
+  it('keeps ignored errors ignored across repeats and can unignore them', () => {
+    const store = new ErrorStore(); const processor = new LogProcessor(store)
+    processor.finish('s', fixtures.npe, { command: 'java -jar app.jar', captureMode: 'tool-result' })
+    const fingerprint = store.snapshot('s').active[0]!.fingerprint
+    expect(store.ignore('s', fingerprint)).toBe(true)
+    expect(store.snapshot('s')).toMatchObject({ health: 'HEALTHY', active: [], ignored: [{ occurrences: 1, status: 'ignored' }] })
+    processor.finish('s', fixtures.npe, { command: 'java -jar app.jar', captureMode: 'tool-result' })
+    expect(store.snapshot('s').ignored[0]).toMatchObject({ occurrences: 2, status: 'ignored' })
+    expect(store.unignore('s', fingerprint)).toBe(true)
+    expect(store.snapshot('s')).toMatchObject({ health: 'BROKEN', ignored: [], active: [{ status: 'active' }] })
+  })
+
+  it('bounds ignored history and restores a legacy v0.1-shaped snapshot', () => {
+    const store = new ErrorStore({ maxIgnoredHistory: 1 }); const processor = new LogProcessor(store)
+    for (const text of [fixtures.npe, fixtures.mybatis]) {
+      processor.finish('s', text, { captureMode: 'tool-result' })
+      store.ignore('s', store.snapshot('s').active[0]!.fingerprint)
+    }
+    expect(store.snapshot('s').ignored).toHaveLength(1)
+    const modern = store.snapshot('s')
+    const restored = new ErrorStore(); restored.restore({ ...modern, ignored: [] })
+    expect(restored.snapshot('s').schemaVersion).toBe(2)
+  })
+
   it('automatically resolves only matching Spring startup command families', () => {
     const store = new ErrorStore(); const processor = new LogProcessor(store)
     processor.finish('s', fixtures.port, { command: './mvnw spring-boot:run', captureMode: 'tool-result', exitCode: 1 })
@@ -57,8 +81,9 @@ describe('session store', () => {
   })
 
   it('validates and clamps runtime settings', () => {
-    const store = new ErrorStore({ maxErrorContextLines: -20, maxResolvedHistory: 9999 })
+    const store = new ErrorStore({ maxErrorContextLines: -20, maxResolvedHistory: 9999, maxIgnoredHistory: 9999 })
     expect(store.settings.maxErrorContextLines).toBe(10)
     expect(store.settings.maxResolvedHistory).toBe(500)
+    expect(store.settings.maxIgnoredHistory).toBe(500)
   })
 })
