@@ -1,8 +1,12 @@
-# dsh-loghud
+<h1 align="center">dsh-loghud</h1>
 
-[简体中文](./README.md) | [English](./README_EN.md)
+<p align="center">
+  <a href="./README.md">简体中文</a> | <a href="./README_EN.md">English</a>
+</p>
 
-[![DSH Market](https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-en.svg)](https://dsh.market/)
+<p align="center">
+  <a href="https://dsh.market/"><img src="https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-en.svg" alt="Listed on DSH Market"></a>
+</p>
 
 `dsh-loghud` is a DeepSeek Harness `0.1.0-rc.8` Web plugin for monitoring errors in local Java and Spring applications. It turns Java runtime exceptions, Spring startup and dependency-injection failures, MyBatis, database, Redis, and HTTP/MVC errors into bounded, deduplicated error cards.
 

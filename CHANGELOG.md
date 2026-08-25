@@ -6,6 +6,7 @@
 - Removed emoji decoration from the LogHUD AI action labels.
 - Made the README installation section expose one direct Release tarball command for marketplace parsers.
 - Added localized DSH Market listing badges to both READMEs.
+- Centered the README title, language navigation, and market badge as a consistent header block.
 
 ## 0.1.0 - 2026-08-20
 
