@@ -112,7 +112,10 @@ export class LogHudRuntime {
         try {
           const operation = terminals.startSend(owner, spawned.sessionId, { text: args.command, submit: true, signal })
           let settled = false
-          void operation.done.finally(() => { settled = true })
+          void operation.done.then(
+            () => { settled = true },
+            () => { settled = true },
+          )
           while (!settled) {
             const read = operation.readOutput()
             if (read.delta) {

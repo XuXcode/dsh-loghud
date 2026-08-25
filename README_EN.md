@@ -8,17 +8,23 @@
   <a href="https://dsh.market/"><img src="https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-en.svg" alt="Listed on DSH Market"></a>
 </p>
 
-`dsh-loghud` is an extensible local development error-monitoring Web plugin for DeepSeek Harness `0.1.0-rc.8`. v0.2.0 supports Node.js, TypeScript, Java, and Spring, turning runtime, compile, module-resolution, build, and startup failures into bounded, deduplicated error cards.
+`dsh-loghud` is an extensible local development error-monitoring Web plugin for DeepSeek Harness `0.1.1-rc.2`. v0.2.1 supports Node.js, TypeScript, Java, and Spring, turning runtime, compile, module-resolution, build, and startup failures into bounded, deduplicated error cards.
 
 AI explanations are strictly opt-in. Detecting an error never calls a model automatically.
 
-v0.2.0 supports Node.js/TypeScript and Java/Spring. Python is planned for v0.3.0, with Go and other ecosystems later. Production monitoring, native crashes, and arbitrary text-log monitoring remain out of scope.
+v0.2.1 supports Node.js/TypeScript and Java/Spring. Python is planned for v0.3.0, with Go and other ecosystems later. Production monitoring, native crashes, and arbitrary text-log monitoring remain out of scope.
 
 ## Preview
 
 ![LogHUD detecting a MyBatis error and providing an AI diagnosis in Chinese](./docs/assets/loghud-demo.png)
 
 > DeepSeek Harness is still a developer preview. This plugin pins every `@deepseek-ai/*` dependency to the same RC version and only uses public Cordis services, Tool events, Terminal, LLM Streaming, Web routes, and Client Slots.
+
+## Compatibility
+
+| dsh-loghud | DeepSeek Harness | Status |
+| --- | --- | --- |
+| v0.2.1 | 0.1.1-rc.2 | Tested |
 
 ## Features
 
@@ -49,6 +55,8 @@ Install the current stable release directly:
 dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.2.0/dsh-loghud-0.2.0.tgz
 ```
 
+Until a formal `v0.2.1` Release exists, install the compatibility update from a source build; the public download above intentionally remains on stable `v0.2.0`.
+
 Run `dsh --profile web --dump-config` after installation. The dumped Web profile should contain the enabled `dsh-loghud` patch. Then start Harness normally and open a Coding Session.
 
 ## Build from source
@@ -59,7 +67,7 @@ Node.js 22.19 or later and pnpm are required.
 pnpm install
 pnpm check
 pnpm pack
-dsh plugin --profile web add ./dsh-loghud-0.2.0.tgz
+dsh plugin --profile web add ./dsh-loghud-0.2.1.tgz
 dsh --profile web --dump-config
 ```
 
@@ -67,7 +75,7 @@ Drag the `LogHUD` badge or panel header and resize the panel from its bottom-rig
 
 ## Support matrix
 
-| Ecosystem | v0.2.0 | Typical errors |
+| Ecosystem | v0.2.1 | Typical errors |
 | --- | --- | --- |
 | Node.js / JavaScript | Supported | TypeError, missing modules, EADDRINUSE, ECONNREFUSED |
 | TypeScript | Supported | TSxxxx and Vite/Rollup/Webpack/Next.js build failures |

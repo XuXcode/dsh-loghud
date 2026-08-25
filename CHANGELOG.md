@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Updated the verified DeepSeek Harness integration from `0.1.0-rc.8` to `0.1.1-rc.2`.
+- Kept every direct DSH peer and development dependency on the same exact release train.
+- Confirmed the public Tool, Terminal, LLM, Web Server, Storage Domain, Session, Client Runtime, and Client Slot APIs used by LogHUD remain source-compatible.
+- Revalidated Java/Spring and Node.js/TypeScript capture, opt-in AI diagnosis, SSE synchronization, Session isolation, and theme-aware Web HUD behavior.
+
 ## 0.2.0 - 2026-08-25
 
 - Added the extensible `LogErrorParser` chain and first-class Node.js/TypeScript parsing.

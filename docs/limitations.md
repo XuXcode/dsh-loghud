@@ -1,6 +1,6 @@
-# v0.2.0 limitations
+# v0.2.1 limitations
 
-- v0.2.0 supports Node.js/TypeScript and Java/Spring. Python is deferred to v0.3.0; Go is deferred to a later release.
+- v0.2.1 supports Node.js/TypeScript and Java/Spring on the verified DeepSeek Harness `0.1.1-rc.2` release train. Python is deferred to v0.3.0; Go is deferred to a later release.
 - Node service recovery is not inferred automatically. Only the existing reliable Spring startup success rule performs automatic resolution.
 - Ignore state applies only to the current Session, though it can be restored with the bounded Session snapshot.
 - Search operates on detected error cards, not complete logs.

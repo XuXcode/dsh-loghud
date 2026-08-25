@@ -8,17 +8,23 @@
   <a href="https://dsh.market/"><img src="https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-zh.svg" alt="DSH Market 已收录"></a>
 </p>
 
-`dsh-loghud` 是面向 DeepSeek Harness `0.1.0-rc.8` 的可扩展本地开发错误监控 Web 插件。v0.2.0 正式支持 Node.js、TypeScript、Java 与 Spring，将运行时、编译、模块解析、构建和应用启动错误整理成有界、去重的错误卡片。
+`dsh-loghud` 是面向 DeepSeek Harness `0.1.1-rc.2` 的可扩展本地开发错误监控 Web 插件。v0.2.1 支持 Node.js、TypeScript、Java 与 Spring，将运行时、编译、模块解析、构建和应用启动错误整理成有界、去重的错误卡片。
 
 AI 解释完全由用户手动触发。检测到错误时，插件不会自动调用模型。
 
-当前 v0.2.0 支持 Node.js/TypeScript 与 Java/Spring。Python 计划在 v0.3.0 加入，Go 及其他生态将在后续版本扩展；当前不承诺生产日志、原生程序崩溃或任意文本日志监控。
+当前 v0.2.1 支持 Node.js/TypeScript 与 Java/Spring。Python 计划在 v0.3.0 加入，Go 及其他生态将在后续版本扩展；当前不承诺生产日志、原生程序崩溃或任意文本日志监控。
 
 ## 界面预览
 
 ![LogHUD 检测 MyBatis 错误并提供中文 AI 诊断](./docs/assets/loghud-demo.png)
 
 > DeepSeek Harness 目前仍处于 developer preview。该插件将所有 `@deepseek-ai/*` 依赖锁定在同一 RC 版本，并且只使用公开的 Cordis 服务、Tool 事件、Terminal、LLM Streaming、Web 路由和 Client Slot。
+
+## 兼容性
+
+| dsh-loghud | DeepSeek Harness | 状态 |
+| --- | --- | --- |
+| v0.2.1 | 0.1.1-rc.2 | 已验证 |
 
 ## 功能
 
@@ -48,6 +54,8 @@ AI 解释完全由用户手动触发。检测到错误时，插件不会自动�
 dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.2.0/dsh-loghud-0.2.0.tgz
 ```
 
+`v0.2.1` 兼容性更新在创建正式 Release 前仅通过源码构建安装；上面的公开下载地址继续指向现有稳定版 `v0.2.0`。
+
 安装后可通过 `dsh --profile web --dump-config` 验证，配置输出中应当包含已启用的 `dsh-loghud` patch。随后正常启动 Harness 并打开 Coding Session。
 
 ## 从源码构建
@@ -58,7 +66,7 @@ dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/down
 pnpm install
 pnpm check
 pnpm pack
-dsh plugin --profile web add ./dsh-loghud-0.2.0.tgz
+dsh plugin --profile web add ./dsh-loghud-0.2.1.tgz
 dsh --profile web --dump-config
 ```
 
@@ -66,7 +74,7 @@ dsh --profile web --dump-config
 
 ## 支持矩阵
 
-| 生态 | v0.2.0 状态 | 典型错误 |
+| 生态 | v0.2.1 状态 | 典型错误 |
 | --- | --- | --- |
 | Node.js / JavaScript | 正式支持 | TypeError、模块缺失、EADDRINUSE、ECONNREFUSED |
 | TypeScript | 正式支持 | TSxxxx、Vite/Rollup/Webpack/Next.js 构建失败 |
