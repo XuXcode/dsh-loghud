@@ -1,10 +1,10 @@
 # Technical feasibility
 
-## v0.2 compatibility update
+## v0.3 compatibility update
 
-The public Tool result and Terminal surfaces are language-agnostic, so Node.js and TypeScript support is implemented entirely in the plugin parser chain. No Harness core changes or shell monkey-patching are required. Ordinary shell results still arrive only after completion; `loghud_run` remains the sole incremental-output mode.
+The public Tool result and Terminal surfaces are language-agnostic, so Python, Node.js, and TypeScript support is implemented entirely in the plugin parser chain. No Harness core changes or shell monkey-patching are required. Ordinary shell results still arrive only after completion; `loghud_run` remains the sole incremental-output mode.
 
-The existing HTTP prefix supports ignore/unignore and revisioned SSE without a Host download endpoint. JSON and Markdown exports use the bounded browser snapshot. Optional Storage and LLM services retain their v0.1 degradation behavior.
+The existing HTTP prefix supports ignore/unignore and revisioned SSE without a Host download endpoint. JSON and Markdown exports use the bounded browser snapshot. The public Settings service supplies a native `settings.section` page and live namespace updates without a custom settings route. Optional Settings, Storage, and LLM services degrade independently.
 
 Target and verified release train: DeepSeek Harness `0.1.1-rc.2`.
 
@@ -25,7 +25,7 @@ In `0.1.1-rc.2`, `tools/result` exposes a final immutable tool outcome. It is su
 - All Harness peer/dev dependencies are exactly `0.1.1-rc.2`; mixed RCs are forbidden.
 - Public declarations from the installed packages are typechecked by strict TypeScript.
 - Optional Terminal/LLM capability is detected at call time with clear error messages.
-- Client registration is additive (`shell.overlay`), because the official `details` slot is single-owner.
+- Client registration is additive (`shell.overlay` plus `settings.section`), because the official `details` slot is single-owner.
 - The package file whitelist and tarball dry run prevent local caches or secrets entering a release.
 
-Persistence is intentionally capability-gated. The real-time authority is always bounded memory. Harness installations without a compatible public `storageDomain` service remain fully functional but restart without historical cards or settings.
+Persistence is intentionally capability-gated. The real-time authority is always bounded memory. Harness installations without a compatible public `storageDomain` service remain fully functional but restart without historical cards. Without a writable Settings provider, Cordis configuration remains authoritative and the settings page becomes read-only/unavailable.

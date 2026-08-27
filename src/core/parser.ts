@@ -20,10 +20,15 @@ const JAVA_FRAME = /\bat\s+(?:[\w$]+\.)*([\w$]+)\.([\w$<>]+)\(([^():]+):(\d+)\)/
 const NODE_ERROR = /(?:^|\s)(TypeError|ReferenceError|SyntaxError|RangeError|URIError|EvalError|AggregateError|UnhandledPromiseRejection(?:Warning)?)(?::\s*(.*))?/
 const NODE_CODE = /(?:code:\s*['"]|\[)(ERR_[A-Z0-9_]+|MODULE_NOT_FOUND|EADDRINUSE|ECONNREFUSED)(?:['"]|\])?/
 const TS_ERROR = /^(.*?)(?:(?:\((\d+),(\d+)\))|(?::(\d+):(\d+)))\s*(?:-|:)\s*error\s+(TS\d+)\s*:\s*(.+)$/i
+const PYTHON_EXCEPTION = /^\s*(?:E\s+)?(?:[\w.]+\.)?([A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit))(?::\s*(.*))?\s*$/
+const PYTHON_FRAME = /^\s*File ["'](.+)["'], line (\d+)(?:, in (.+))?\s*$/i
+const PYTHON_COMPACT_FRAME = /^\s*(.+\.py):(\d+)(?::(\d+))?(?::|\s+-)/i
+const PYTHON_TOOLS: readonly Toolchain[] = ['python', 'pip', 'pytest', 'uv', 'poetry', 'pipenv']
 
 export const DEFAULT_PARSERS: readonly LogErrorParser[] = [
   typescriptParser(),
   nodeParser(),
+  pythonParser(),
   springParser(),
   javaParser(),
   genericParser(),
@@ -63,9 +68,14 @@ function typescriptParser(): LogErrorParser {
 function nodeParser(): LogErrorParser {
   return {
     id: 'node', priority: 400,
-    supports: (block) => ['NODE_RUNTIME', 'MODULE_RESOLUTION', 'BUILD_FAILURE'].includes(block.rule.category)
-      || block.rule.language === 'javascript' || block.rule.language === 'typescript'
-      || block.lines.some((line) => NODE_ERROR.test(line) || /MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|EADDRINUSE|ECONNREFUSED/.test(line)),
+    supports: (block, context) => {
+      const toolchain = detectToolchain(context.command)
+      if (block.rule.language === 'python' || (toolchain && PYTHON_TOOLS.includes(toolchain))
+        || block.lines.some((line) => /Traceback \(most recent call last\):|^\s*File ["'].+\.py["'], line \d+/i.test(line))) return false
+      return ['NODE_RUNTIME', 'MODULE_RESOLUTION', 'BUILD_FAILURE'].includes(block.rule.category)
+        || block.rule.language === 'javascript' || block.rule.language === 'typescript'
+        || block.lines.some((line) => NODE_ERROR.test(line) || /MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|EADDRINUSE|ECONNREFUSED/.test(line))
+    },
     parse: (block, context) => {
       const lines = cleanLines(block)
       const text = lines.join('\n')
@@ -89,6 +99,40 @@ function nodeParser(): LogErrorParser {
         ...(rootMessage ? { rootMessage } : {}), ...(missing ? { target: missing } : {}),
         ...(frame?.file ? { file: frame.file } : {}), ...(frame?.line ? { line: frame.line } : {}), ...(frame?.column ? { column: frame.column } : {}), ...(frame?.symbol ? { symbol: frame.symbol } : {}),
         ...extractNodePort(text), exceptionChain: dedupe([errorMatch?.[1], code, exceptionType].filter((value): value is string => Boolean(value))), rawContext: lines,
+      }
+    },
+  }
+}
+
+function pythonParser(): LogErrorParser {
+  return {
+    id: 'python', priority: 350,
+    supports: (block, context) => {
+      const toolchain = detectToolchain(context.command)
+      return block.rule.language === 'python' || Boolean(toolchain && PYTHON_TOOLS.includes(toolchain))
+        || block.lines.some((line) => /Traceback \(most recent call last\):|Task exception was never retrieved|^\s*File ["'].+\.py["'], line \d+/i.test(line))
+    },
+    parse: (block, context) => {
+      const lines = cleanLines(block)
+      const text = lines.join('\n')
+      const chain = lines.map((line) => line.match(PYTHON_EXCEPTION)).filter((match): match is RegExpMatchArray => Boolean(match?.[1]))
+      const deepest = chain.at(-1)
+      const exceptionType = deepest?.[1] ?? (/Task exception was never retrieved/i.test(text) ? 'AsyncioTaskError' : 'PythonError')
+      const rootMessage = deepest?.[2]?.trim() || pythonFallbackMessage(lines, exceptionType)
+      const toolchain = detectToolchain(context.command) ?? block.rule.toolchain ?? 'python'
+      const pytest = toolchain === 'pytest' || /(?:^|\n)(?:FAILED|ERROR)\s+.+\.py|short test summary info|^E\s+/m.test(text)
+      const category: ErrorCategory = /^(?:ModuleNotFoundError|ImportError)$/.test(exceptionType) || /No module named/i.test(text)
+        ? 'PYTHON_IMPORT' : pytest ? 'PYTHON_TEST_FAILURE' : 'PYTHON_RUNTIME'
+      const frame = firstBusinessPythonFrame(lines)
+      const target = text.match(/No module named\s+['"]([^'"]+)['"]/i)?.[1]
+        ?? text.match(/cannot import name\s+['"]([^'"]+)['"]/i)?.[1]
+      const column = frame?.column ?? syntaxColumn(lines)
+      const summary = pythonSummary(category, exceptionType, rootMessage, target)
+      return {
+        category, framework: pytest ? 'pytest' : 'python', language: 'python', runtime: 'python', toolchain,
+        exceptionType, summary, ...(rootMessage ? { rootMessage } : {}), ...(target ? { target } : {}),
+        ...(frame?.file ? { file: frame.file } : {}), ...(frame?.line ? { line: frame.line } : {}), ...(column ? { column } : {}), ...(frame?.symbol ? { symbol: frame.symbol } : {}),
+        exceptionChain: dedupe(chain.map((match) => match[1]!)), rawContext: lines,
       }
     },
   }
@@ -144,7 +188,41 @@ function fallbackParsed(block: ErrorBlock, context: ParseContext, parserId: stri
   const first = lines.find((line) => /error|failed|exception/i.test(line))?.trim() ?? lines.find(Boolean)?.trim() ?? 'Process failed'
   const toolchain = detectToolchain(context.command) ?? block.rule.toolchain
   const node = toolchain && ['node', 'npm', 'pnpm', 'yarn', 'typescript', 'vite', 'rollup', 'webpack', 'next', 'vitest', 'jest'].includes(toolchain)
-  return { category: block.rule.category, language: node ? 'javascript' : block.rule.language ?? 'unknown', runtime: node ? 'node' : 'unknown', ...(toolchain ? { toolchain } : {}), parserId, exceptionType: 'RuntimeError', summary: first, rootMessage: first, exceptionChain: ['RuntimeError'], rawContext: lines }
+  const python = toolchain && PYTHON_TOOLS.includes(toolchain)
+  return { category: block.rule.category, language: python ? 'python' : node ? 'javascript' : block.rule.language ?? 'unknown', runtime: python ? 'python' : node ? 'node' : 'unknown', ...(toolchain ? { toolchain } : {}), parserId, exceptionType: python ? 'PythonError' : 'RuntimeError', summary: first, rootMessage: first, exceptionChain: [python ? 'PythonError' : 'RuntimeError'], rawContext: lines }
+}
+
+function firstBusinessPythonFrame(lines: string[]): { symbol?: string; file: string; line: number; column?: number } | undefined {
+  const frames: Array<{ symbol?: string; file: string; line: number; column?: number }> = []
+  for (const raw of lines) {
+    const full = raw.match(PYTHON_FRAME)
+    const compact = raw.match(PYTHON_COMPACT_FRAME)
+    const file = full?.[1] ?? compact?.[1]
+    const line = Number(full?.[2] ?? compact?.[2])
+    const column = Number(compact?.[3]) || undefined
+    if (file && line) frames.push({ ...(full?.[3]?.trim() ? { symbol: full[3].trim() } : {}), file, line, ...(column ? { column } : {}) })
+  }
+  return frames.find((frame) => !/(?:^|[\\/])(?:\.venv|venv|env|site-packages|dist-packages)[\\/]|[\\/]lib[\\/]python\d+(?:\.\d+)?[\\/]|[\\/]python\d+(?:\.\d+)?[\\/]lib[\\/]/i.test(frame.file)) ?? frames[0]
+}
+
+function syntaxColumn(lines: string[]): number | undefined {
+  const pointer = lines.find((line) => /^\s*\^+\s*$/.test(line))
+  if (!pointer) return undefined
+  const index = pointer.indexOf('^')
+  return index >= 0 ? index + 1 : undefined
+}
+
+function pythonFallbackMessage(lines: string[], exceptionType: string): string | undefined {
+  const line = [...lines].reverse().find((value) => value.includes(exceptionType))?.trim()
+  if (line?.includes(':')) return line.slice(line.indexOf(':') + 1).trim()
+  if (/AsyncioTaskError/.test(exceptionType)) return 'Task exception was never retrieved'
+  return undefined
+}
+
+function pythonSummary(category: ErrorCategory, exceptionType: string, rootMessage?: string, target?: string): string {
+  if (category === 'PYTHON_IMPORT') return target ? `Cannot import Python module ${target}` : rootMessage ?? 'Python import failed'
+  if (category === 'PYTHON_TEST_FAILURE') return rootMessage ?? `Python test failed with ${exceptionType}`
+  return rootMessage ?? exceptionType
 }
 
 function firstBusinessNodeFrame(lines: string[]): { symbol?: string; file: string; line: number; column: number } | undefined {

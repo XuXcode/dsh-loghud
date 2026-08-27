@@ -8,11 +8,11 @@
   <a href="https://dsh.market/"><img src="https://raw.githubusercontent.com/2BingLing/dsh-market/master/assets/readme/badge-listed-en.svg" alt="Listed on DSH Market"></a>
 </p>
 
-`dsh-loghud` is an extensible local development error-monitoring Web plugin for DeepSeek Harness `0.1.1-rc.2`. v0.2.1 supports Node.js, TypeScript, Java, and Spring, turning runtime, compile, module-resolution, build, and startup failures into bounded, deduplicated error cards.
+`dsh-loghud` is an extensible local development error-monitoring Web plugin for DeepSeek Harness `0.1.1-rc.2`. v0.3.0 supports Python, Node.js, TypeScript, Java, and Spring, turning runtime, compile, module-resolution, build, test, and startup failures into bounded, deduplicated error cards.
 
 AI explanations are strictly opt-in. Detecting an error never calls a model automatically.
 
-v0.2.1 supports Node.js/TypeScript and Java/Spring. Python is planned for v0.3.0, with Go and other ecosystems later. Production monitoring, native crashes, and arbitrary text-log monitoring remain out of scope.
+v0.3.0 supports Python, Node.js/TypeScript, and Java/Spring. Go and other ecosystems remain planned for later releases. Production monitoring, native crashes, and arbitrary text-log monitoring remain out of scope.
 
 ## Preview
 
@@ -24,11 +24,12 @@ v0.2.1 supports Node.js/TypeScript and Java/Spring. Python is planned for v0.3.0
 
 | dsh-loghud | DeepSeek Harness | Status |
 | --- | --- | --- |
-| v0.2.1 | 0.1.1-rc.2 | Tested |
+| v0.3.0 | 0.1.1-rc.2 | Tested |
 
 ## Features
 
 - Detects Node.js runtime errors, TypeScript `TSxxxx` diagnostics, missing modules, network failures, package-manager lifecycle failures, and Vite/Rollup/Webpack/Next.js build errors.
+- Detects Python 3.10–3.14 tracebacks, chained exceptions, import failures, syntax errors, unhandled asyncio task failures, and pytest failures.
 - Preserves Spring IOC, MyBatis, MySQL/database, Redis, Spring MVC, Java runtime, and startup detection.
 - Extracts language, toolchain, error code, root cause, business frame, file, line, column, target, and port.
 - Merges repeated errors using stable fingerprints and tracks occurrence count and last-seen time.
@@ -37,6 +38,7 @@ v0.2.1 supports Node.js/TypeScript and Java/Spring. Python is planned for v0.3.0
 - Pushes revisioned snapshots through SSE and exposes connection/reconnection state.
 - Adds search, language/category filters, JSON/Markdown export, and a draggable/resizable persisted layout.
 - Supports Chinese and English UI, Harness light/dark theme variables, and keyboard operation.
+- Adds a dedicated LogHUD page to the native Harness Settings menu with live, durable, resettable preferences.
 - Runs AI diagnosis only on request and redacts common secrets before sending context.
 
 ## Capture modes
@@ -52,10 +54,8 @@ The plugin never replaces or monkey-patches the native Harness shell. The UI cle
 Install the current stable release directly:
 
 ```sh
-dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.2.0/dsh-loghud-0.2.0.tgz
+dsh plugin --profile web add https://github.com/XuXcode/dsh-loghud/releases/download/v0.3.0/dsh-loghud-0.3.0.tgz
 ```
-
-Until a formal `v0.2.1` Release exists, install the compatibility update from a source build; the public download above intentionally remains on stable `v0.2.0`.
 
 Run `dsh --profile web --dump-config` after installation. The dumped Web profile should contain the enabled `dsh-loghud` patch. Then start Harness normally and open a Coding Session.
 
@@ -67,23 +67,23 @@ Node.js 22.19 or later and pnpm are required.
 pnpm install
 pnpm check
 pnpm pack
-dsh plugin --profile web add ./dsh-loghud-0.2.1.tgz
+dsh plugin --profile web add ./dsh-loghud-0.3.0.tgz
 dsh --profile web --dump-config
 ```
 
-Drag the `LogHUD` badge or panel header and resize the panel from its bottom-right corner. The browser remembers both position and size. `Alt` plus arrow keys also moves the panel, and Settings restores the default layout. UI labels and opt-in AI explanations follow the browser language.
+Drag the `LogHUD` badge or panel header and resize the panel from its bottom-right corner. The browser remembers both position and size. `Alt` plus arrow keys also moves the panel, and the HUD can restore its default layout. Monitoring preferences live on the dedicated `LogHUD` page in Harness Settings and follow the active Harness locale.
 
 ## Support matrix
 
-| Ecosystem | v0.2.1 | Typical errors |
+| Ecosystem | v0.3.0 | Typical errors |
 | --- | --- | --- |
 | Node.js / JavaScript | Supported | TypeError, missing modules, EADDRINUSE, ECONNREFUSED |
 | TypeScript | Supported | TSxxxx and Vite/Rollup/Webpack/Next.js build failures |
 | Java / Spring | Supported | IOC, MyBatis, database, Redis, MVC, runtime, startup |
-| Python | Planned for v0.3.0 | Not implemented |
+| Python 3.10–3.14 | Supported | Traceback, imports, SyntaxError, asyncio, pytest |
 | Go | Later release | Not implemented |
 
-The dependency-free Node demo is in [`examples/node-demo`](examples/node-demo/README.md).
+The dependency-free demos are in [`examples/node-demo`](examples/node-demo/README.md) and [`examples/python-demo`](examples/python-demo/README.md).
 
 ## Configuration
 
@@ -91,17 +91,20 @@ The dependency-free Node demo is in [`examples/node-demo`](examples/node-demo/RE
 enabled: true
 enableAiAnalysis: true       # manual only; never automatic
 maxErrorContextLines: 120
+maxActiveErrors: 100
 maxResolvedHistory: 50
 maxIgnoredHistory: 50
 secretRedaction: true
 beginnerFriendly: true
 ```
 
+Prefer editing these values on the native `LogHUD` page in Harness Settings. Cordis patch values form the composition base and durable Harness user settings override them. Lowering an active, resolved, or ignored limit prunes old cards immediately. Turning `enabled` off hides the HUD and stops new capture and AI requests without deleting existing errors.
+
 Missing Terminal support disables only `loghud_run`; final tool-result detection continues. Missing LLM routing disables only diagnosis and leaves every local error card intact. Without a compatible `storageDomain`, state remains bounded and process-local.
 
 ## Detection and health state
 
-The parser chain runs TypeScript, Node.js, Spring/Java, and Generic parsers in a fixed priority order. It selects the first non-`node_modules`, non-`node:internal` business frame and normalizes paths, build hashes, PIDs, ports, and temporary directories before creating a stable SHA-256 fingerprint.
+The parser chain runs TypeScript, Node.js, Python, Spring, Java, and Generic parsers in a fixed priority order. It selects the first non-dependency, non-runtime-internal business frame and normalizes paths, Python environments, build hashes, PIDs, ports, and temporary directories before creating a stable SHA-256 fingerprint.
 
 Health states are defined as follows:
 

@@ -7,7 +7,7 @@ import type { ErrorEvent, SessionSnapshot } from '../src/shared/types.js'
 
 const nodeError: ErrorEvent = { id: 'n', fingerprint: 'node', version: 1, status: 'active', severity: 'error', category: 'NODE_RUNTIME', language: 'javascript', runtime: 'node', toolchain: 'node', parserId: 'node', exceptionType: 'TypeError', summary: 'user is null', file: 'src/app.js', line: 2, column: 4, captureMode: 'tool-result', firstSeenAt: 1, lastSeenAt: 1, occurrences: 1, exceptionChain: ['TypeError'], rawContext: ['TypeError: user is null'] }
 const javaError: ErrorEvent = { ...nodeError, id: 'j', fingerprint: 'java', category: 'JAVA_RUNTIME', language: 'java', runtime: 'jvm', toolchain: 'java', exceptionType: 'NullPointerException', summary: 'order missing', file: 'Order.java', column: undefined }
-const snapshot: SessionSnapshot = { schemaVersion: 2, sessionId: 's', health: 'BROKEN', observedCommand: true, active: [nodeError, javaError], resolved: [], ignored: [], revision: 3 }
+const snapshot: SessionSnapshot = { schemaVersion: 3, sessionId: 's', health: 'BROKEN', observedCommand: true, active: [nodeError, javaError], resolved: [], ignored: [], droppedActiveErrors: 0, revision: 3 }
 
 describe('v0.2 client utilities', () => {
   it('filters by text, language, and category', () => {

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-26
+
+- Added first-class Python 3.10–3.14 parsing for standard tracebacks, chained exceptions, imports, syntax errors, asyncio task failures, and pytest failures.
+- Added Python command/toolchain detection, normalized Python-environment fingerprints, more than 20 deterministic fixtures, and a dependency-free Python demo.
+- Added a dedicated native LogHUD page in Harness Settings with live persistence, per-field inheritance reset, validation, bilingual copy, and read-only/unavailable degradation.
+- Added `maxActiveErrors`, snapshot schema version 3, active-card pruning statistics, and v0.1/v0.2 snapshot migration.
+- Made the enabled setting stop new capture, `loghud_run`, AI requests, and the HUD surface without deleting existing Session cards.
+- Made beginner-friendly mode affect the AI prompt while preserving manual-only AI invocation and secret redaction.
+- Kept Java/Spring and Node.js/TypeScript behavior compatible with DeepSeek Harness `0.1.1-rc.2`.
+
+## 0.2.1 - 2026-08-25
+
 - Updated the verified DeepSeek Harness integration from `0.1.0-rc.8` to `0.1.1-rc.2`.
 - Kept every direct DSH peer and development dependency on the same exact release train.
 - Confirmed the public Tool, Terminal, LLM, Web Server, Storage Domain, Session, Client Runtime, and Client Slot APIs used by LogHUD remain source-compatible.

@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import type { CaptureMode, Diagnosis, ErrorEvent, ParsedError, SessionSnapshot } from '../shared/types.js'
-import { DEFAULT_SETTINGS, type LogHudSettings } from '../shared/types.js'
+import type { LogHudSettings } from '../shared/types.js'
+import { normalizeLogHudSettings } from '../shared/validation.js'
 import { createFingerprint } from './fingerprint.js'
 
-interface SessionState { observedCommand: boolean; revision: number; errors: Map<string, ErrorEvent> }
+interface SessionState { observedCommand: boolean; revision: number; droppedActiveErrors: number; errors: Map<string, ErrorEvent> }
 type Listener = (snapshot: SessionSnapshot) => void
 
 export class ErrorStore {
@@ -13,7 +14,22 @@ export class ErrorStore {
   readonly settings: LogHudSettings
 
   constructor(settings: Partial<LogHudSettings> = {}) {
-    this.settings = normalizeSettings(settings)
+    this.settings = normalizeLogHudSettings(settings)
+  }
+
+  updateSettings(settings: Partial<LogHudSettings>): LogHudSettings {
+    const next = normalizeLogHudSettings(settings)
+    const changed = Object.keys(next).some((key) => this.settings[key as keyof LogHudSettings] !== next[key as keyof LogHudSettings])
+    if (!changed) return { ...this.settings }
+    Object.assign(this.settings, next)
+    for (const [sessionId, state] of this.sessions) {
+      for (const [fingerprint, event] of state.errors) {
+        if (event.rawContext.length > next.maxErrorContextLines) state.errors.set(fingerprint, { ...event, rawContext: event.rawContext.slice(-next.maxErrorContextLines) })
+      }
+      this.prune(state)
+      this.changed(sessionId, state)
+    }
+    return { ...this.settings }
   }
 
   observe(sessionId: string, parsed: ParsedError, input: { command?: string; commandFamily?: string; captureMode: CaptureMode; now?: number }): ErrorEvent {
@@ -36,6 +52,7 @@ export class ErrorStore {
         diagnosisError: undefined,
       }
       state.errors.set(fingerprint, next)
+      this.prune(state)
       this.changed(sessionId, state)
       return next
     }
@@ -61,6 +78,7 @@ export class ErrorStore {
       ...(input.commandFamily ? { commandFamily: input.commandFamily } : {}),
     }
     state.errors.set(fingerprint, event)
+    this.prune(state)
     this.changed(sessionId, state)
     return event
   }
@@ -106,7 +124,7 @@ export class ErrorStore {
 
   get(sessionId: string, fingerprint: string): ErrorEvent | undefined { return this.state(sessionId).errors.get(fingerprint) }
   clearResolved(sessionId: string): void { const state = this.state(sessionId); for (const [key, value] of state.errors) if (value.status === 'resolved') state.errors.delete(key); this.changed(sessionId, state) }
-  clearAll(sessionId: string): void { const state = this.state(sessionId); state.errors.clear(); state.observedCommand = false; this.changed(sessionId, state) }
+  clearAll(sessionId: string): void { const state = this.state(sessionId); state.errors.clear(); state.observedCommand = false; state.droppedActiveErrors = 0; this.changed(sessionId, state) }
 
   snapshot(sessionId: string): SessionSnapshot {
     const state = this.state(sessionId)
@@ -114,7 +132,7 @@ export class ErrorStore {
     const active = all.filter((e) => e.status === 'active').sort((a, b) => b.lastSeenAt - a.lastSeenAt)
     const resolved = all.filter((e) => e.status === 'resolved').sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0))
     const ignored = all.filter((e) => e.status === 'ignored').sort((a, b) => (b.ignoredAt ?? b.lastSeenAt) - (a.ignoredAt ?? a.lastSeenAt))
-    return { schemaVersion: 2, sessionId, health: active.length ? 'BROKEN' : state.observedCommand ? 'HEALTHY' : 'UNKNOWN', observedCommand: state.observedCommand, active, resolved, ignored, revision: state.revision, settings: { ...this.settings } }
+    return { schemaVersion: 3, sessionId, health: active.length ? 'BROKEN' : state.observedCommand ? 'HEALTHY' : 'UNKNOWN', observedCommand: state.observedCommand, active, resolved, ignored, droppedActiveErrors: state.droppedActiveErrors, revision: state.revision, settings: { ...this.settings } }
   }
 
   subscribe(sessionId: string, listener: Listener): () => void {
@@ -127,29 +145,21 @@ export class ErrorStore {
 
   restore(snapshot: SessionSnapshot): void {
     const errors = new Map<string, ErrorEvent>()
-    const bounded = [...snapshot.active, ...snapshot.resolved.slice(0, this.settings.maxResolvedHistory), ...(snapshot.ignored ?? []).slice(0, this.settings.maxIgnoredHistory)]
+    const active = snapshot.active.slice(0, this.settings.maxActiveErrors)
+    const bounded = [...active, ...snapshot.resolved.slice(0, this.settings.maxResolvedHistory), ...(snapshot.ignored ?? []).slice(0, this.settings.maxIgnoredHistory)]
     for (const event of bounded) errors.set(event.fingerprint, { ...event, rawContext: event.rawContext.slice(-this.settings.maxErrorContextLines) })
-    this.sessions.set(snapshot.sessionId, { observedCommand: snapshot.observedCommand, revision: snapshot.revision, errors })
+    this.sessions.set(snapshot.sessionId, { observedCommand: snapshot.observedCommand, revision: snapshot.revision, droppedActiveErrors: (snapshot.droppedActiveErrors ?? 0) + Math.max(0, snapshot.active.length - active.length), errors })
   }
 
-  private state(id: string): SessionState { let state = this.sessions.get(id); if (!state) { state = { observedCommand: false, revision: 0, errors: new Map() }; this.sessions.set(id, state) } return state }
+  private state(id: string): SessionState { let state = this.sessions.get(id); if (!state) { state = { observedCommand: false, revision: 0, droppedActiveErrors: 0, errors: new Map() }; this.sessions.set(id, state) } return state }
   private changed(id: string, state: SessionState): void { state.revision++; const snapshot = this.snapshot(id); for (const listener of this.listeners.get(id) ?? []) listener(snapshot); for (const listener of this.allListeners) listener(snapshot) }
   private patchError(id: string, fingerprint: string, update: (event: ErrorEvent) => ErrorEvent): boolean { const state = this.state(id); const event = state.errors.get(fingerprint); if (!event) return false; state.errors.set(fingerprint, update(event)); this.changed(id, state); return true }
-  private prune(state: SessionState): void { const resolved = [...state.errors.values()].filter((e) => e.status === 'resolved').sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0)); for (const event of resolved.slice(this.settings.maxResolvedHistory)) state.errors.delete(event.fingerprint); const ignored = [...state.errors.values()].filter((e) => e.status === 'ignored').sort((a, b) => (b.ignoredAt ?? b.lastSeenAt) - (a.ignoredAt ?? a.lastSeenAt)); for (const event of ignored.slice(this.settings.maxIgnoredHistory)) state.errors.delete(event.fingerprint) }
-}
-
-function normalizeSettings(input: Partial<LogHudSettings>): LogHudSettings {
-  return {
-    enabled: typeof input.enabled === 'boolean' ? input.enabled : DEFAULT_SETTINGS.enabled,
-    enableAiAnalysis: typeof input.enableAiAnalysis === 'boolean' ? input.enableAiAnalysis : DEFAULT_SETTINGS.enableAiAnalysis,
-    maxErrorContextLines: finiteInteger(input.maxErrorContextLines, DEFAULT_SETTINGS.maxErrorContextLines, 10, 1000),
-    maxResolvedHistory: finiteInteger(input.maxResolvedHistory, DEFAULT_SETTINGS.maxResolvedHistory, 0, 500),
-    maxIgnoredHistory: finiteInteger(input.maxIgnoredHistory, DEFAULT_SETTINGS.maxIgnoredHistory, 0, 500),
-    secretRedaction: typeof input.secretRedaction === 'boolean' ? input.secretRedaction : DEFAULT_SETTINGS.secretRedaction,
-    beginnerFriendly: typeof input.beginnerFriendly === 'boolean' ? input.beginnerFriendly : DEFAULT_SETTINGS.beginnerFriendly,
+  private prune(state: SessionState): void {
+    const active = [...state.errors.values()].filter((e) => e.status === 'active').sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+    for (const event of active.slice(this.settings.maxActiveErrors)) { if (state.errors.delete(event.fingerprint)) state.droppedActiveErrors++ }
+    const resolved = [...state.errors.values()].filter((e) => e.status === 'resolved').sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0))
+    for (const event of resolved.slice(this.settings.maxResolvedHistory)) state.errors.delete(event.fingerprint)
+    const ignored = [...state.errors.values()].filter((e) => e.status === 'ignored').sort((a, b) => (b.ignoredAt ?? b.lastSeenAt) - (a.ignoredAt ?? a.lastSeenAt))
+    for (const event of ignored.slice(this.settings.maxIgnoredHistory)) state.errors.delete(event.fingerprint)
   }
-}
-
-function finiteInteger(value: unknown, fallback: number, min: number, max: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, Math.trunc(value))) : fallback
 }

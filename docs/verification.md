@@ -1,5 +1,24 @@
 # Verification record
 
+## v0.3.0 feature verification
+
+Verified on Windows 11 on 2026-08-27 against DeepSeek Harness `0.1.1-rc.2`:
+
+- Node.js 24.12.0 and pnpm 11.4.0.
+- Strict TypeScript passed.
+- The complete Vitest suite passed: 13 test files and 100 tests, including more than 20 Python cases, v0.1/v0.2 snapshot migration, Settings live updates, disabled-state behavior, client accessibility states, existing Java/Spring and Node.js/TypeScript coverage, secret redaction, and the 100,000-line performance case.
+- Host, Core, and browser Client production builds passed. The Client bundle passed the ModuleLoader registration guard.
+- The allowlisted `dsh-loghud-0.3.0.tgz` package was generated successfully and contains the Python demo, native Settings client, schema v3 Host code, documentation, and no build cache or credentials.
+- A temporary Web profile accepted the tarball. `--dump-config` showed the official file-backed Settings provider, the official client Settings modules, and the LogHUD defaults including `maxActiveErrors: 100`.
+- The exact-version temporary Web Host started on an isolated loopback port. The index, packaged LogHUD Client bundle, and schema v3 snapshot API returned HTTP 200. The revisioned SSE route returned `text/event-stream`, `id: 0`, and a complete snapshot event. Host logs contained no LogHUD warning or error.
+- The Settings page behavior is covered with the official `SettingsScope` contract: immediate switch saves, validated numeric blur/Enter saves, per-field reset, inherited/overridden display, unavailable/read-only degradation, Harness locale changes, keyboard controls, and ARIA status output.
+
+The machine used for verification does not have `python` or the Windows `py` launcher installed, so the dependency-free Python demo could not be executed as a real subprocess. Python parsing, arbitrary chunk boundaries, ANSI/CRLF input, chained exceptions, asyncio, pytest, Windows/Unix paths, syntax columns, business-frame selection, and 1,000-occurrence deduplication all pass deterministic fixtures.
+
+The locally cached standalone Harness CLI omitted several peer packages declared by the `0.1.1-rc.2` bundle graph. Those exact-version Harness peers were added only to the isolated smoke profile before Host startup; no workaround was added to LogHUD's production dependencies.
+
+No live provider-backed LLM request was sent. Beginner-friendly and concise technical prompts, click-only invocation, coalescing, cancellation/failure preservation, safe JSON fallback, and redaction remain covered with deterministic test doubles.
+
 ## v0.2.1 compatibility verification
 
 Verified on Windows 11 on 2026-08-25 against the exact DeepSeek Harness `0.1.1-rc.2` release train:

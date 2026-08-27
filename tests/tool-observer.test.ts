@@ -46,4 +46,14 @@ describe('Harness tool-result observation', () => {
     observe(execution('bash', { command: 'node ./src/app.js' }), result('TypeError: user is null\n    at main (/repo/src/app.js:3:2)', true))
     expect(runtime.store.snapshot('session-1').active.map((event) => event.category)).toEqual(expect.arrayContaining(['TYPESCRIPT_COMPILE', 'NODE_RUNTIME']))
   })
+
+  it('observes Python commands and stops capture while LogHUD is disabled', () => {
+    const python = 'Traceback (most recent call last):\n  File "C:\\work\\app.py", line 2, in <module>\n    run()\nValueError: invalid input'
+    const runtime = new LogHudRuntime({} as never); const observe = observer(runtime)
+    observe(execution('pwsh', { command: 'py -3.12 .\\app.py' }), result(python, true))
+    expect(runtime.store.snapshot('session-1').active[0]).toMatchObject({ language: 'python', category: 'PYTHON_RUNTIME' })
+    const disabled = new LogHudRuntime({} as never, { enabled: false })
+    observer(disabled)(execution('bash', { command: 'python3 app.py' }), result(python, true))
+    expect(disabled.store.snapshot('session-1').health).toBe('UNKNOWN')
+  })
 })

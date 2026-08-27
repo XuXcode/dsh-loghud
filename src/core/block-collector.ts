@@ -45,7 +45,12 @@ export class ErrorBlockCollector {
       return []
     }
 
-    const isContinuation = /^\s+(?:at\s|\.\.\.\s+\d+\s+more|Caused by:|Suppressed:)/.test(line)
+    const pythonContinuation = this.rule.language === 'python' && (/^\s*File ["'].+["'], line \d+(?:, in .+)?$/i.test(line)
+      || /^\s+\S/.test(line) || /^\s*\^+\s*$/.test(line)
+      || /^Traceback \(most recent call last\):$/i.test(line)
+      || /^(?:During handling of the above exception|The above exception was the direct cause)/.test(line)
+      || /^(?:E\s+)?(?:[\w.]+)?[A-Za-z_]\w*(?:Error|Exception|Warning|Interrupt|Exit)(?::|$)/.test(line))
+    const isContinuation = pythonContinuation || /^\s+(?:at\s|\.\.\.\s+\d+\s+more|Caused by:|Suppressed:)/.test(line)
       || /^Caused by:|^Suppressed:|^APPLICATION FAILED TO START|^Description:|^Action:/.test(line)
       || /^\s*(?:code|errno|syscall|address|port):\s*/i.test(line)
       || /^\s*(?:\d+\s*\||[~^]+|at\s+file:\/\/)/.test(line)

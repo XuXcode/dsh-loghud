@@ -51,7 +51,7 @@ describe('session store', () => {
     expect(store.snapshot('s').ignored).toHaveLength(1)
     const modern = store.snapshot('s')
     const restored = new ErrorStore(); restored.restore({ ...modern, ignored: [] })
-    expect(restored.snapshot('s').schemaVersion).toBe(2)
+    expect(restored.snapshot('s').schemaVersion).toBe(3)
   })
 
   it('automatically resolves only matching Spring startup command families', () => {

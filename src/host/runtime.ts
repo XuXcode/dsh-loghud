@@ -13,8 +13,8 @@ const JOB_OUTPUT_TOOL = /(?:^|[/_-])job[/_-]?output$/i
 const BACKGROUND_JOB_STARTED = /started background job\s+([^\s]+)/i
 const SETTLED_JOB = /\[status:\s*(?:completed|failed|killed|cancelled),\s*exit code:\s*-?\d+\]/i
 const EXIT_CODE = /\bexit code:\s*(-?\d+)\b/i
-const SUPPORTED_COMMAND = /(?:^|[\s"'])(?:java|mvn|mvnw|gradle|gradlew|node|npm|pnpm|yarn|npx|tsx|ts-node|tsc|vite|webpack|next|vitest|jest)(?:\.cmd|\.bat|\.exe)?(?:[\s"']|$)|spring-boot/i
-const SUPPORTED_OUTPUT = /(?:Spring Boot|Application run failed|Error starting ApplicationContext|(?:Caused by:\s*)?(?:[\w$]+\.)+(?:Exception|Error)(?::|\s)|\b(?:TypeError|ReferenceError|SyntaxError|RangeError|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|EADDRINUSE|ECONNREFUSED|TS\d{4}|ELIFECYCLE)\b)/i
+const SUPPORTED_COMMAND = /(?:^|[\s"'])(?:java|mvn|mvnw|gradle|gradlew|node|npm|pnpm|yarn|npx|tsx|ts-node|tsc|vite|webpack|next|vitest|jest|python(?:3(?:\.\d+)?)?|py|pip3?|pytest|uv|poetry|pipenv)(?:\.cmd|\.bat|\.exe)?(?:[\s"']|$)|spring-boot/i
+const SUPPORTED_OUTPUT = /(?:Spring Boot|Application run failed|Error starting ApplicationContext|Traceback \(most recent call last\):|Task exception was never retrieved|(?:Caused by:\s*)?(?:[\w$]+\.)+(?:Exception|Error)(?::|\s)|\b(?:TypeError|ReferenceError|SyntaxError|RangeError|ModuleNotFoundError|ImportError|ValueError|NameError|AttributeError|KeyError|IndexError|ZeroDivisionError|FileNotFoundError|PermissionError|ConnectionError|TimeoutError|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|EADDRINUSE|ECONNREFUSED|TS\d{4}|ELIFECYCLE)\b)/i
 const API_PREFIX = '/api/loghud'
 
 export class LogHudRuntime {
@@ -76,7 +76,7 @@ export class LogHudRuntime {
   private createStreamingTool() {
     return defineTool({
       name: 'loghud_run',
-      description: 'Run a local command in an official Harness terminal while LogHUD incrementally monitors Java, Spring, Node.js, and TypeScript errors.',
+      description: 'Run a local command in an official Harness terminal while LogHUD incrementally monitors Python, Java, Spring, Node.js, and TypeScript errors.',
       parameters: {
         command: { type: 'string', required: true, description: 'Command to run' },
         timeoutMs: { type: 'integer', description: 'Cooperative timeout in milliseconds (1000-600000)' },
@@ -94,6 +94,7 @@ export class LogHudRuntime {
       },
       timeoutMs: 610_000,
       execute: async (args, exec) => {
+        if (!this.store.settings.enabled) throw new Error('LogHUD is disabled in Harness settings')
         if (!exec.agent) throw new Error('loghud_run requires an active Agent session')
         const terminals = this.ctx.get('terminals') as TerminalSessionService | undefined
         if (!terminals) throw new Error('Real-time mode unavailable: no official terminal service is loaded')
@@ -184,6 +185,7 @@ export class LogHudRuntime {
   }
 
   private async diagnose(sessionId: string, body: Record<string, unknown>, res: import('node:http').ServerResponse): Promise<void> {
+    if (!this.store.settings.enabled) return json(res, 403, { error: 'LogHUD is disabled' })
     if (!this.store.settings.enableAiAnalysis) return json(res, 403, { error: 'AI analysis is disabled' })
     const fingerprint = requiredString(body.fingerprint, 'fingerprint')
     const locale = diagnosisLocale(body.locale)
@@ -195,7 +197,9 @@ export class LogHudRuntime {
     const provider = agent?.options.provider
     const model = agent?.options.model
     if (!llm || !provider || !model) return json(res, 503, { error: 'AI analysis unavailable. The error was still detected locally.' })
-    const key = `${sessionId}:${event.fingerprint}:${event.version}:${locale}`
+    const beginnerFriendly = this.store.settings.beginnerFriendly
+    const explanationMode = beginnerFriendly ? 'beginner' : 'technical'
+    const key = `${sessionId}:${event.fingerprint}:${event.version}:${locale}:${explanationMode}`
     const existing = this.diagnosisInflight.get(key)
     if (existing) {
       try { return json(res, 200, await existing) } catch { return json(res, 503, { error: 'AI analysis unavailable. The error was still detected locally.' }) }
@@ -212,7 +216,7 @@ export class LogHudRuntime {
       }
       return text
     } }, this.store.settings.secretRedaction)
-    const pending = service.diagnose(event, AbortSignal.timeout(45_000), locale).finally(() => this.diagnosisInflight.delete(key))
+    const pending = service.diagnose(event, AbortSignal.timeout(45_000), locale, beginnerFriendly).finally(() => this.diagnosisInflight.delete(key))
     this.diagnosisInflight.set(key, pending)
     try {
       const diagnosis = await pending

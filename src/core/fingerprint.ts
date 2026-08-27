@@ -10,5 +10,10 @@ export function createFingerprint(error: ParsedError, commandFamily?: string): s
 
 function normalizePath(value?: string): string | undefined {
   if (!value) return undefined
-  return value.replace(/\\/g, '/').replace(/^file:\/\//, '').replace(/^(?:[a-z]:)?\/.+?\/(src|test|tests|app|server|client)\//i, '$1/').replace(/(?:^|\/)node_modules\/.*/i, '<dependency>')
+  return value.replace(/\\/g, '/').replace(/^file:\/\//, '')
+    .replace(/^(?:[a-z]:)?\/.+?\/(src|test|tests|app|server|client)\//i, '$1/')
+    .replace(/(?:^|\/)(?:\.venv|venv|env)\/.*?(?:site-packages\/)?/i, '<python-env>/')
+    .replace(/(?:^|\/)site-packages\/.*/i, '<python-dependency>')
+    .replace(/(?:^|\/)node_modules\/.*/i, '<dependency>')
+    .replace(/(?:^|\/)(?:tmp|temp)\/[a-z0-9._-]+\//i, '<temp>/')
 }

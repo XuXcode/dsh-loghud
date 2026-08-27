@@ -1,10 +1,10 @@
 # Architecture
 
-## v0.2 parser and state model
+## v0.3 parser and state model
 
-`LogProcessor` feeds bounded blocks into registered `LogErrorParser` implementations. Built-in priority is TypeScript, Node.js, Spring/Java, then Generic. Parsers publish JSON-safe language, runtime, toolchain, parser ID, error code, file, line, and column metadata. Fingerprints include the first business frame and command family after paths, build hashes, PIDs, ports, and Node internal frames are normalized.
+`LogProcessor` feeds bounded blocks into registered `LogErrorParser` implementations. Built-in priority is TypeScript, Node.js, Python, Spring, Java, then Generic. Parsers publish JSON-safe language, runtime, toolchain, parser ID, error code, file, line, and column metadata. Python parsing understands standard and chained tracebacks, syntax locations, asyncio task failures, and pytest output. Fingerprints include the first business frame and command family after dependency paths, Python environments, build hashes, PIDs, ports, and runtime-internal frames are normalized.
 
-Snapshot schema version 2 contains bounded active, resolved, and ignored lists. Legacy v0.1 records receive defaults during validation. SSE snapshots carry the Store revision as the event ID, and every connection or reconnection receives a complete current snapshot. JSON and Markdown exports are generated in the browser.
+Snapshot schema version 3 contains bounded active, resolved, and ignored lists plus the number of active cards dropped by the configured bound. Legacy v0.1/v0.2 records receive defaults during validation. SSE snapshots carry the Store revision as the event ID, and every connection or reconnection receives a complete current snapshot. JSON and Markdown exports are generated in the browser.
 
 ```mermaid
 flowchart LR
@@ -16,6 +16,7 @@ flowchart LR
   F --> S["Per-Session in-memory store"]
   S --> H["JSON + SSE routes"]
   H --> U["shell.overlay LogHUD"]
+  Q["Harness Settings"] -->|"dsh-loghud namespace"| S
   U -->|"explicit click only"| D["Secret-redacted LLM diagnosis"]
 ```
 
@@ -24,6 +25,12 @@ flowchart LR
 `LogHudRuntime` requires the public `tools` and `webServer` services. It observes the frozen `tools/result` outcome without changing it, and registers `loghud_run` with `defineTool`. Terminal and LLM are read through `ctx.get()` at use time so their absence is a feature-level degradation, not a boot failure.
 
 The streaming tool creates an owner-scoped official terminal using the active Agent, submits one command, drains `readOutput()` deltas, cooperates with caller cancellation and timeout, then kills its terminal in `finally`.
+
+## Native settings
+
+The Host registers the `dsh-loghud` namespace through the public Settings service. Schemastery defaults are layered below Cordis entry configuration and the durable user section. Changes are applied live to `ErrorStore`; lowering bounds prunes immediately. Without a mounted Settings provider, `installSettingsSection` keeps the Cordis entry authoritative and the plugin continues normally.
+
+The browser binds the same namespace through `ctx.settingsScope` and contributes a root-scoped `settings.section` page. Writes are one validated field at a time and `unset` restores inheritance. Remote or read-only browsers render an inert explanation instead of calling private APIs. Session snapshots remain in `storageDomain`; settings are not duplicated there.
 
 ## Collector and store
 

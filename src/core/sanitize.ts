@@ -35,6 +35,11 @@ export function commandFamily(command?: string): string | undefined {
   const runner = normalized.match(/\b(npx|tsx|ts-node|tsc|vite|webpack|next|vitest|jest)(?:\.cmd)?\b/i)?.[1]
   if (runner) return `node:${runner.toLowerCase()}`
   if (/\bnode(?:\.exe)?\b/i.test(normalized)) return 'node:script'
+  const pythonTool = normalized.match(/\b(pytest|pipenv|poetry|uv|pip3?|python(?:3(?:\.\d+)?)?|py)(?:\.exe)?\b/i)?.[1]?.toLowerCase()
+  if (pythonTool === 'pytest' || /\bpython(?:3(?:\.\d+)?)?\s+-m\s+pytest\b/i.test(normalized) || /\bpy\s+(?:-\d+(?:\.\d+)?\s+)?-m\s+pytest\b/i.test(normalized)) return 'python:pytest'
+  if (pythonTool === 'pip' || pythonTool === 'pip3') return 'python:pip'
+  if (pythonTool === 'uv' || pythonTool === 'poetry' || pythonTool === 'pipenv') return `python:${pythonTool}`
+  if (pythonTool) return 'python:script'
   return normalized.split(' ').slice(0, 2).join(':').toLowerCase()
 }
 
@@ -44,6 +49,12 @@ export function detectToolchain(command?: string): import('../shared/types.js').
   for (const tool of ['pnpm', 'npm', 'yarn', 'vite', 'rollup', 'webpack', 'next', 'vitest', 'jest'] as const) if (new RegExp(`\\b${tool}(?:\\.cmd)?\\b`).test(value)) return tool
   if (/\b(?:tsc|tsx|ts-node)(?:\.cmd)?\b/.test(value)) return 'typescript'
   if (/\bnode(?:\.exe)?\b/.test(value)) return 'node'
+  if (/\bpytest(?:\.exe)?\b|\bpython(?:3(?:\.\d+)?)?(?:\.exe)?\s+-m\s+pytest\b|\bpy(?:\.exe)?\s+(?:-\d+(?:\.\d+)?\s+)?-m\s+pytest\b/.test(value)) return 'pytest'
+  if (/\bpipenv(?:\.exe)?\b/.test(value)) return 'pipenv'
+  if (/\bpoetry(?:\.exe)?\b/.test(value)) return 'poetry'
+  if (/\buv(?:\.exe)?\b/.test(value)) return 'uv'
+  if (/\bpip3?(?:\.exe)?\b|\bpython(?:3(?:\.\d+)?)?(?:\.exe)?\s+-m\s+pip\b/.test(value)) return 'pip'
+  if (/\b(?:python(?:3(?:\.\d+)?)?|py)(?:\.exe)?\b/.test(value)) return 'python'
   if (/\bmvnw?(?:\.cmd)?\b/.test(value)) return 'maven'
   if (/\bgradlew?(?:\.bat)?\b/.test(value)) return 'gradle'
   if (/\bjava(?:\.exe)?\b/.test(value)) return 'java'

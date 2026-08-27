@@ -5,14 +5,15 @@ import { DEFAULT_SETTINGS, type LogHudSettings, type SessionSnapshot } from '../
 
 const settingsSchema = z.object({
   enabled: z.boolean(), enableAiAnalysis: z.boolean(), maxErrorContextLines: z.number().int().min(10).max(1000),
+  maxActiveErrors: z.number().int().min(10).max(500).default(100),
   maxResolvedHistory: z.number().int().min(0).max(500), maxIgnoredHistory: z.number().int().min(0).max(500).default(50),
   secretRedaction: z.boolean(), beginnerFriendly: z.boolean(),
 })
-const categorySchema = z.enum(['SPRING_IOC', 'MYBATIS', 'DATABASE', 'REDIS', 'HTTP', 'JAVA_RUNTIME', 'NODE_RUNTIME', 'TYPESCRIPT_COMPILE', 'MODULE_RESOLUTION', 'BUILD_FAILURE', 'APPLICATION_STARTUP', 'UNKNOWN'])
+const categorySchema = z.enum(['SPRING_IOC', 'MYBATIS', 'DATABASE', 'REDIS', 'HTTP', 'JAVA_RUNTIME', 'NODE_RUNTIME', 'TYPESCRIPT_COMPILE', 'MODULE_RESOLUTION', 'BUILD_FAILURE', 'PYTHON_RUNTIME', 'PYTHON_IMPORT', 'PYTHON_TEST_FAILURE', 'APPLICATION_STARTUP', 'UNKNOWN'])
 const eventSchema = z.object({
   id: z.string(), fingerprint: z.string(), version: z.number().int(), status: z.enum(['active', 'resolved', 'ignored']), severity: z.enum(['error', 'warning']),
-  framework: z.string().optional(), language: z.enum(['java', 'javascript', 'typescript', 'unknown']).optional(), runtime: z.enum(['jvm', 'node', 'unknown']).optional(),
-  toolchain: z.enum(['java', 'maven', 'gradle', 'node', 'npm', 'pnpm', 'yarn', 'typescript', 'vite', 'rollup', 'webpack', 'next', 'vitest', 'jest', 'unknown']).optional(),
+  framework: z.string().optional(), language: z.enum(['java', 'javascript', 'typescript', 'python', 'unknown']).optional(), runtime: z.enum(['jvm', 'node', 'python', 'unknown']).optional(),
+  toolchain: z.enum(['java', 'maven', 'gradle', 'node', 'npm', 'pnpm', 'yarn', 'typescript', 'vite', 'rollup', 'webpack', 'next', 'vitest', 'jest', 'python', 'pip', 'pytest', 'uv', 'poetry', 'pipenv', 'unknown']).optional(),
   parserId: z.string().optional(), errorCode: z.string().optional(), category: categorySchema,
   exceptionType: z.string(), summary: z.string(), rootMessage: z.string().optional(), target: z.string().optional(), file: z.string().optional(), line: z.number().int().optional(), column: z.number().int().optional(),
   symbol: z.string().optional(), port: z.number().int().optional(), command: z.string().optional(), commandFamily: z.string().optional(), captureMode: z.enum(['tool-result', 'streaming-tool']),
@@ -20,10 +21,12 @@ const eventSchema = z.object({
   diagnosis: z.object({ simpleExplanation: z.string(), likelyCauses: z.array(z.string()), suggestedChecks: z.array(z.string()), confidence: z.enum(['high', 'medium', 'low']), locale: z.enum(['en', 'zh-CN']).optional() }).optional(),
   diagnosisError: z.string().optional(),
 })
-const snapshotSchema: z.ZodType<SessionSnapshot> = z.object({
-  schemaVersion: z.literal(2).default(2), sessionId: z.string(), health: z.enum(['HEALTHY', 'BROKEN', 'UNKNOWN']), observedCommand: z.boolean(),
-  active: z.array(eventSchema), resolved: z.array(eventSchema), ignored: z.array(eventSchema).default([]), revision: z.number().int(),
-})
+const snapshotSchema = z.object({
+  schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1), sessionId: z.string(), health: z.enum(['HEALTHY', 'BROKEN', 'UNKNOWN']), observedCommand: z.boolean(),
+  active: z.array(eventSchema), resolved: z.array(eventSchema), ignored: z.array(eventSchema).default([]), droppedActiveErrors: z.number().int().min(0).default(0), revision: z.number().int(),
+}).transform((snapshot): SessionSnapshot => ({ ...snapshot, schemaVersion: 3 }))
+
+export function migrateSessionSnapshot(value: unknown): SessionSnapshot { return snapshotSchema.parse(value) }
 
 const LOGHUD_DOMAIN = defineDomain({
   name: 'dsh_loghud', version: 1,
@@ -34,8 +37,7 @@ const LOGHUD_DOMAIN = defineDomain({
 export async function openPersistence(facility: DomainFacility, store: ErrorStore): Promise<() => Promise<void>> {
   const domain = await facility.open(LOGHUD_DOMAIN)
   const persisted = domain.global.get()
-  if (persisted.initialized) Object.assign(store.settings, DEFAULT_SETTINGS, persisted.settings)
-  else await domain.global.set({ initialized: true, settings: { ...store.settings } as LogHudSettings })
+  if (!persisted.initialized) await domain.global.set({ initialized: true, settings: { ...store.settings } as LogHudSettings })
   const sessions = domain.table('sessions')
   for (const [, snapshot] of sessions.entries()) store.restore(snapshot)
   const dispose = store.subscribeAll((snapshot) => { void sessions.put(snapshot.sessionId, snapshot).catch(() => undefined) })
